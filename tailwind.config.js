@@ -1,0 +1,1 @@
+module.exports={content:["./app/**/*.{js,jsx}"],theme:{extend:{colors:{ink:"#161618",panel:"#2c2c2f",violet:"#8b5cf6",azure:"#3b82f6"},fontFamily:{sans:["var(--font-inter)","system-ui","sans-serif"]}}},plugins:[]};
