@@ -2,7 +2,6 @@
 import {useEffect,useRef,useState} from "react";
 import {motion,AnimatePresence} from "framer-motion";
 
-const SITE="https://earvingallardo.com";
 const fmtTime=d=>d.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
 const fmtDate=d=>d.toLocaleDateString([], {weekday:"long",month:"long",day:"numeric"});
 
@@ -12,20 +11,17 @@ const Icon=({g,label})=>(<div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl g
 
 const APPS={
  about:{title:"About Earvin",emoji:"👤",g:"bg-gradient-to-br from-indigo-400 to-purple-600"},
- empowertours:{title:"EmpowerTours",emoji:"⛰️",g:"bg-gradient-to-br from-blue-500 to-violet-600"},
- tours:{title:"Tours",emoji:"⛰️",g:"bg-gradient-to-br from-blue-500 to-violet-600"},
- music:{title:"Music & Videos",emoji:"🎧",g:"bg-gradient-to-br from-fuchsia-500 to-violet-700"},
- blog:{title:"Blog",emoji:"📝",g:"bg-gradient-to-br from-amber-400 to-orange-500"},
- shop:{title:"Shop",emoji:"🛍️",g:"bg-gradient-to-br from-emerald-400 to-teal-600"},
- schedule:{title:"Scheduling",emoji:"📅",g:"bg-gradient-to-br from-sky-400 to-blue-600"},
- notes:{title:"Leave a note",emoji:"✍️",g:"bg-gradient-to-br from-yellow-300 to-yellow-500"},
+ projects:{title:"Projects",emoji:"🧩",g:"bg-gradient-to-br from-emerald-400 to-teal-600"},
+ empowertours:{title:"EmpowerTours",emoji:"🌳",g:"bg-gradient-to-br from-blue-500 to-violet-600"},
+ music:{title:"Music",emoji:"🎧",g:"bg-gradient-to-br from-fuchsia-500 to-violet-700"},
+ blog:{title:"Updates",emoji:"📝",g:"bg-gradient-to-br from-amber-400 to-orange-500"},
 };
 
 const NOTIFS=[
- {app:"music",t:"New song out now",b:"“Oyasumi” music video draft just dropped. Tap to watch.",ago:"now"},
- {app:"tours",t:"Next climbing tour",b:"Web3-powered rock climbing adventure — dates coming soon.",ago:"12m ago"},
- {app:"shop",t:"Shop drop",b:"New gear is live in the shop.",ago:"1h ago"},
- {app:"blog",t:"Latest blog post",b:"Money Making Machine – Artist: Earvin Gallardo",ago:"3h ago"},
+ {app:"music",t:"EmpowerTours Radio",b:"Music minted by EmpowerTours artists, on-chain. Press play.",ago:"now"},
+ {app:"empowertours",t:"Visit the farm",b:"The EmpowerTours farm and orchard in Guerrero, Mexico is open to visitors.",ago:""},
+ {app:"projects",t:"What I've built",b:"Art, Hunt, Cota, Clearwave, TURBO, Connect and more on Monad.",ago:""},
+ {app:"about",t:"Available for contract work",b:"Smart contracts and full-stack apps on Monad.",ago:""},
 ];
 
 function Lock({onUnlock,now}){
@@ -49,23 +45,46 @@ function Lock({onUnlock,now}){
   </div></motion.div>)
 }
 
-function Tours(){return(<div className="space-y-3">
- <img src="/hero.jpg" alt="Climber on a neon mountain" className="w-full rounded-xl"/>
- <h2 className="text-xl font-bold">Web3-Powered Rock Climbing Adventures</h2>
- <p className="text-white/75 text-sm">Guided climbing trips that blend the outdoors with Web3 — earn on-chain proof of every summit, connect with a community of climbers, and unlock perks along the way.</p>
- <div className="rounded-xl bg-white/5 p-3 text-sm"><b>Next tour:</b> <span className="text-amber-300">[Placeholder — date & location TBA]</span></div>
- <a href={`${SITE}/empowertours`} target="_blank" className="inline-block rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold">Learn more ↗</a></div>)}
-function Music(){return(<div className="space-y-3">
- <video src="/oyasumi.mp4" controls playsInline className="w-full max-h-[55vh] rounded-xl bg-black"/>
- <p className="text-sm text-white/70">Sample: “Oyasumi” music video (draft)</p>
- <h3 className="font-semibold pt-2">Songs <span className="text-xs text-amber-300">(placeholder list)</span></h3>
- <ul className="divide-y divide-white/10 text-sm">{["Oyasumi","Money Making Machine","[Song title TBA]","[Song title TBA]"].map((s,i)=>(<li key={i} className="py-2 flex justify-between"><span>{i+1}. {s}</span><span className="text-white/40">–:––</span></li>))}</ul></div>)}
-function Blog(){return(<div className="space-y-3"><p className="text-xs text-white/50">Latest post</p>
- <h2 className="text-xl font-bold">Money Making Machine – Artist: Earvin Gallardo</h2>
- <p className="text-sm text-white/75">A new track from Earvin Gallardo. <span className="text-amber-300">[Placeholder summary — post body to be added]</span></p>
- <a href={SITE} target="_blank" className="text-violet-300 text-sm">Read on earvingallardo.com ↗</a></div>)}
-const LinkOut=({path,text,cta})=>(<div className="space-y-3 text-sm"><p className="text-white/75">{text}</p>
- <a href={`${SITE}${path}`} target="_blank" className="inline-block rounded-full bg-violet-600 px-4 py-2 font-semibold">{cta} ↗</a></div>);
+const SONGS=[{"n": "OYASUMI", "a": "", "img": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmaTJqQTx5V4Fr6B38zijCGQfrGkHt4aJTqmzpE3ZujSeg", "au": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmSG4o9DNG6NfprwGdtvwmA6YAVEfqtj3X3BLci9mkA1Dt", "id": "14"}, {"n": "Dime Que Si", "a": "Unify34", "img": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmXTkB2UHozwVsfy3RReDMD6HcfEYypKZhS6RGZsJGd52K", "au": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmbaxKvYvfBR3BtF2qjyUm43yADAsRCqBwMZZqfGuZAxwj", "id": "13"}, {"n": "Suddenly", "a": "Unify34", "img": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmWBnWTiiXzKQnxqPQg9iwBnJNwXqfad9wWSNa427H6wxo", "au": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmYwpxD9xx37YMwbGPcGyY9YjyyZQGWPq1qtBv38EMpHC4", "id": "12"}, {"n": "Money Making Machine", "a": "Unify34", "img": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmWBnWTiiXzKQnxqPQg9iwBnJNwXqfad9wWSNa427H6wxo", "au": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmaAPq5Cx5jhUh3gxe4Bvp3VzZ5zQgvJWFxVMyqYh631d3", "id": "11"}, {"n": "Sloppy", "a": "Unify34", "img": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmXTkB2UHozwVsfy3RReDMD6HcfEYypKZhS6RGZsJGd52K", "au": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmNNpGksU4SnSiTNEqtgHzxXrEVKsiLzupBFDorh3Jt3iP", "id": "10"}, {"n": "Killah", "a": "Unify34", "img": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmXPqTJpuByfC7rrMUWhMHbknvCP75HGqrGJi15GP6CDSM", "au": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmPimKEocDZEVGEM6TN9MjXX8qvMVPd1PC8zFsQ9JS7b7A", "id": "9"}, {"n": "MARINA", "a": "Unify34", "img": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmWBnWTiiXzKQnxqPQg9iwBnJNwXqfad9wWSNa427H6wxo", "au": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmZVbLuouCVmi4ptLeCqu5uzHZNMveqaDDWKrR8tNe74Mc", "id": "8"}, {"n": "Ganado", "a": "Earvin Gallardo", "img": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmXTkB2UHozwVsfy3RReDMD6HcfEYypKZhS6RGZsJGd52K", "au": "https://harlequin-used-hare-224.mypinata.cloud/ipfs/QmakF2WxeAPQv14A9x5RW1AYDj5rjow2Xno2kkvNuF3pL4", "id": "6"}];
+function Music(){const [cur,setCur]=useState(null);return(<div className="space-y-3 text-sm">
+ <div className="rounded-xl bg-white/5 p-3"><b>EmpowerTours Radio</b><p className="text-white/70">Music from the artists, on-chain. Stream music minted by EmpowerTours artists — no wallet, no sign-in, just press play.</p>
+ <div className="mt-2 flex flex-wrap gap-2"><a href="https://radio.empowertours.xyz" target="_blank" className="rounded-full bg-violet-600 px-3 py-1.5 font-semibold">Open Radio ↗</a><a href="https://art.empowertours.xyz" target="_blank" className="rounded-full bg-white/10 px-3 py-1.5">Mint & collect on Art ↗</a></div></div>
+ {cur!==null&&<audio key={cur} src={SONGS[cur].au} controls autoPlay className="w-full"/>}
+ <ul className="divide-y divide-white/10">{SONGS.map((t,i)=>(<li key={t.id}><button onClick={()=>setCur(i)} className={`w-full py-2 flex items-center gap-3 text-left ${cur===i?"text-violet-300":""}`}>
+  <img src={t.img} alt="" loading="lazy" className="w-10 h-10 rounded object-cover bg-white/10"/><span className="flex-1"><b>{t.n}</b>{t.a&&<span className="block text-xs text-white/50">{t.a}</span>}</span><span>{cur===i?"♪":"▶"}</span></button></li>))}</ul>
+ <h3 className="font-semibold pt-1">Music video</h3>
+ <video src="/oyasumi.mp4" controls playsInline className="w-full max-h-[55vh] rounded-xl bg-black"/><p className="text-white/60">“Oyasumi”</p></div>)}
+const POSTS=[
+ ["Got an app idea that doesn't exist yet?","I'll build it for free if the idea doesn't exist yet."],
+ ["TOKEN2049 Cota contest","A contest around Cota, bounded delegation for trading on Monad, at TOKEN2049.","https://cota.empowertours.xyz"],
+ ["Taking contract work","Available for contract app development: smart contracts and full-stack apps on Monad."],
+ ["Art pays 90% to artists","On EmpowerTours Art, 90% goes to the artist, paid straight to the wallet.","https://art.empowertours.xyz"],
+ ["Hiring ranch staff in Guerrero","The EmpowerTours farm and orchard in Guerrero, Mexico is hiring ranch staff."],
+ ["Hiring developers through TURBO","Developers are being brought on through the TURBO cohort.","https://turbo.empowertours.xyz"]];
+function Blog(){return(<div className="space-y-3 text-sm"><p className="text-xs text-white/50">From Earvin's LinkedIn</p>
+ {POSTS.map(([t,b,u])=>(<div key={t} className="rounded-xl bg-white/5 p-3"><b>{t}</b><p className="text-white/70">{b}</p>{u&&<a href={u} target="_blank" className="text-violet-300">{u.replace("https://","")} ↗</a>}</div>))}
+ <a href="https://www.linkedin.com/in/earvin-gallardo-a14b5989" target="_blank" className="text-violet-300">Read the posts on LinkedIn ↗</a></div>)}
+const GH="https://github.com/EmpowerTours/";
+const PROJECTS=[
+ ["EmpowerTours Art","Music and art on Monad as a Farcaster Mini App: artists mint NFTs and keep 90% of licence sales, with a play-based artist pool, live radio and DigitalPassport NFTs.","https://art.empowertours.xyz","fcempowertours"],
+ ["EmpowerTours Radio","Stream music minted by EmpowerTours artists. No wallet, no sign-in.","https://radio.empowertours.xyz"],
+ ["EmpowerTours Hunt","GPS treasure hunt with server-verified location; cache finds pay TURBO credit, spawns pay native MON.","https://hunt.empowertours.xyz","empowertours-hunt"],
+ ["TURBO","12-month Web3 accelerator for LATAM founders on Monad, with a 52-week curriculum and on-chain membership.","https://turbo.empowertours.xyz","turbo-empowertours"],
+ ["Cota","Bounded delegation for trading on Monad.","https://cota.empowertours.xyz"],
+ ["Clearwave","Tokenized royalty share offerings with compliance enforced inside the contract.","https://clearwave-production.up.railway.app","clearwave"],
+ ["Quantum Portfolio","Quantum-safe DeFi allocation agents (Santander X Quantum AI Leap): QAOA on an IBM Heron QPU and post-quantum-signed orders executed on Monad.","https://quantum-portfolio-awhfbfwtbqmp2swgpsvxwf.streamlit.app","quantum-portfolio"],
+ ["EmpowerTours Connect","Warm intros and partnerships for institutional blockchain BD. Open source.","https://connect.empowertours.xyz","connect"],
+ ["Backlog","On-chain ledger of everything you're building: AI scores each project's completion from git and writes it to Monad.","https://backlog-production-d1b6.up.railway.app","backlog"],
+ ["PQ Agent Batch","Post-quantum (ML-DSA-65) signed AI-agent orders, batched into one SP1 Groth16 proof and settled on Monad.",null,"pq-agent-batch"],
+ ["La Ruta","Post-to-earn whitelist on X for the EmpowerTours ecosystem on Monad.",null,"la-ruta"],
+ ["Plebi","Quick public polls shared by link. No accounts, live results.",null,"plebi"],
+ ["most-preflight","Pre-push gates for contributing to repos you don't maintain: diff-scoped mutation testing, differential repro and a human approval gate.",null,"most-preflight"],
+ ["EmpowerOS","Terminal-first dev toolkit for the EmpowerTours ecosystem.",null,"empoweros"],
+ ["Monad ODYSSEY","Immersive 3D galaxy visualization of the Monad ecosystem.",null,"Monad-Universe"],
+ ["libdmkde","C++17 density-matrix kernel density estimation for anomaly detection.",null,"libdmkde"]];
+function Projects(){return(<div className="space-y-2 text-sm">{PROJECTS.map(([n,d,u,r])=>(<div key={n} className="rounded-xl bg-white/5 p-3"><b>{n}</b><p className="text-white/70">{d}</p>
+ <div className="flex gap-3 mt-1">{u&&<a href={u} target="_blank" className="text-violet-300">Live ↗</a>}{r&&<a href={GH+r} target="_blank" className="text-white/60">GitHub ↗</a>}</div></div>))}
+ <a href="https://github.com/EmpowerTours" target="_blank" className="text-violet-300">All repos on GitHub ↗</a></div>)}
 const LI="https://www.linkedin.com/in/earvin-gallardo-a14b5989";
 const BUILT=[["fcempowertours","Farcaster Mini App where artists mint and sell their music on-chain."],
  ["EmpowerTours Hunt","GPS treasure hunt with server-verified location, timing and movement — no app install, no seed phrase; claim MON.","https://hunt.empowertours.xyz"],
@@ -97,24 +116,11 @@ function About(){return(<div className="space-y-4 text-sm">
  <ul className="list-disc pl-5 text-white/75"><li>OSHA 30</li><li>OSHA 10</li><li>NYC DOB Expeditor filing rep</li><li>Notifier Onyx AFP-2020 Advanced Programming</li></ul>
  <a href={LI} target="_blank" className="text-violet-300">LinkedIn ↗</a></div>)}
 function EmpowerTours(){return(<div className="space-y-3 text-sm">
- <img src="/hero.jpg" alt="EmpowerTours" className="w-full rounded-xl"/>
- <h2 className="text-xl font-bold">EmpowerTours</h2><p className="text-white/60">One of Earvin's ventures · founded Mar 2025</p>
+  <h2 className="text-xl font-bold">EmpowerTours</h2><p className="text-white/60">One of Earvin's ventures · founded Mar 2025</p>
  <div className="grid sm:grid-cols-2 gap-2"><div className="rounded-xl bg-white/5 p-3"><b>Software studio</b><p className="text-white/70">Building consumer crypto apps on Monad.</p></div>
  <div className="rounded-xl bg-white/5 p-3"><b>Farm & orchard</b><p className="text-white/70">A working farm and orchard in Guerrero, Mexico, open to visitors.</p></div></div>
- <p className="text-white/60">See the full list of builds in About Earvin.</p></div>)}
-function Notes(){const [list,setList]=useState([]);const [name,setName]=useState("");const [msg,setMsg]=useState("");
- useEffect(()=>{try{setList(JSON.parse(localStorage.getItem("et-notes")||"[]"))}catch{}},[]);
- const add=e=>{e.preventDefault();if(!msg.trim())return;const n=[{name:name.trim()||"Anonymous",msg:msg.trim(),at:Date.now()},...list];setList(n);localStorage.setItem("et-notes",JSON.stringify(n));setMsg("")};
- return(<div className="space-y-3 text-sm"><form onSubmit={add} className="space-y-2">
-  <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" className="w-full rounded-lg bg-white/10 px-3 py-2 outline-none"/>
-  <textarea value={msg} onChange={e=>setMsg(e.target.value)} placeholder="Leave a note…" rows={3} className="w-full rounded-lg bg-white/10 px-3 py-2 outline-none"/>
-  <button className="rounded-full bg-yellow-400 text-black px-4 py-1.5 font-semibold">Post note</button>
-  <p className="text-xs text-white/40">Preview only: notes are saved in this browser.</p></form>
-  {list.map(n=>(<div key={n.at} className="rounded-xl bg-yellow-200/90 text-black p-3"><p>{n.msg}</p><p className="text-xs opacity-60 mt-1">— {n.name}</p></div>))}</div>)}
-
-const CONTENT={empowertours:<EmpowerTours/>,tours:<Tours/>,music:<Music/>,blog:<Blog/>,about:<About/>,notes:<Notes/>,
- shop:<LinkOut path="/shop" text="Gear, merch and tour passes are sold through the existing EmpowerTours shop." cta="Open the shop"/>,
- schedule:<LinkOut path="/scheduling" text="Book a climbing session or a call using the existing scheduling page." cta="Book a time"/>};
+ <div className="rounded-xl bg-white/5 p-3"><b>EmpowerTours Hunt</b><p className="text-white/70">GPS treasure hunt with server-verified location, timing and movement — no app install, no seed phrase; claim MON.</p><a href="https://hunt.empowertours.xyz" target="_blank" className="text-violet-300">hunt.empowertours.xyz ↗</a></div></div>)}
+const CONTENT={about:<About/>,projects:<Projects/>,empowertours:<EmpowerTours/>,music:<Music/>,blog:<Blog/>};
 
 function Win({id,z,focus,close,idx,mobile}){const a=APPS[id];
  return(<motion.div drag={!mobile} dragMomentum={false} dragListener={!mobile} onPointerDown={focus} style={{zIndex:z}}
@@ -146,7 +152,7 @@ export default function Page(){
   <div className="relative z-10 p-4 sm:p-6 grid grid-cols-4 sm:grid-cols-1 gap-4 sm:w-24">
    {Object.entries(APPS).map(([k,a])=>(<button key={k} onDoubleClick={()=>open(k)} onClick={()=>mobile&&open(k)} className="flex flex-col items-center gap-1 text-[11px] text-white/90">
     <Icon g={a.g} label={a.emoji}/>{a.title}</button>))}</div>
-  <div className="hidden sm:block absolute right-8 top-14 text-right z-0"><p className="text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Earvin Gallardo</p><p className="text-white/60">Artist · Builder · Founder of EmpowerTours</p><p className="text-xs text-white/40 mt-1">Double-click an icon or use the dock</p></div>
+  <div className="hidden sm:block absolute right-8 top-14 text-right z-0"><p className="text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Earvin Gallardo</p><p className="text-white/60">Marine Veteran · Builder · Founder of EmpowerTours</p><p className="text-xs text-white/40 mt-1">Double-click an icon or use the dock</p></div>
   <AnimatePresence>{wins.map((w,i)=>(<Win key={w.id} id={w.id} z={w.z} idx={i} mobile={mobile} focus={()=>{setTop(t=>t+1);setWins(ws=>ws.map(x=>x.id===w.id?{...x,z:top+1}:x))}} close={()=>setWins(ws=>ws.filter(x=>x.id!==w.id))}/>))}</AnimatePresence>
   {/* dock */}
   <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[60] glass rounded-2xl px-2 py-2 flex gap-1.5 sm:gap-2 max-w-[96vw] overflow-x-auto">
