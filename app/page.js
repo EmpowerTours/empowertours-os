@@ -13,8 +13,6 @@ const Icon=({g,label})=>(<div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl g
 const APPS={
  about:{title:"About Earvin",emoji:"👤",g:"bg-gradient-to-br from-indigo-400 to-purple-600"},
  empowertours:{title:"EmpowerTours",emoji:"⛰️",g:"bg-gradient-to-br from-blue-500 to-violet-600"},
- camera:{title:"Camera",emoji:"📷",g:"bg-gradient-to-br from-zinc-500 to-zinc-800"},
- gallery:{title:"Gallery",emoji:"🖼️",g:"bg-gradient-to-br from-pink-400 to-rose-600"},
  tours:{title:"Tours",emoji:"⛰️",g:"bg-gradient-to-br from-blue-500 to-violet-600"},
  music:{title:"Music & Videos",emoji:"🎧",g:"bg-gradient-to-br from-fuchsia-500 to-violet-700"},
  blog:{title:"Blog",emoji:"📝",g:"bg-gradient-to-br from-amber-400 to-orange-500"},
@@ -24,7 +22,6 @@ const APPS={
 };
 
 const NOTIFS=[
- {app:"camera",t:"Say cheese 📸",b:"Snap or upload a photo — it lands in the public gallery.",ago:"now"},
  {app:"music",t:"New song out now",b:"“Oyasumi” music video draft just dropped. Tap to watch.",ago:"now"},
  {app:"tours",t:"Next climbing tour",b:"Web3-powered rock climbing adventure — dates coming soon.",ago:"12m ago"},
  {app:"shop",t:"Shop drop",b:"New gear is live in the shop.",ago:"1h ago"},
@@ -105,40 +102,6 @@ function EmpowerTours(){return(<div className="space-y-3 text-sm">
  <div className="grid sm:grid-cols-2 gap-2"><div className="rounded-xl bg-white/5 p-3"><b>Software studio</b><p className="text-white/70">Building consumer crypto apps on Monad.</p></div>
  <div className="rounded-xl bg-white/5 p-3"><b>Farm & orchard</b><p className="text-white/70">A working farm and orchard in Guerrero, Mexico, open to visitors.</p></div></div>
  <p className="text-white/60">See the full list of builds in About Earvin.</p></div>)}
-function Camera(){const v=useRef(null);const [stream,setStream]=useState(null);const [facing,setFacing]=useState("user");const [shot,setShot]=useState(null);const [err,setErr]=useState("");const [name,setName]=useState("");const [cap,setCap]=useState("");const [busy,setBusy]=useState(false);const [msg,setMsg]=useState("");
- const stop=()=>{stream?.getTracks().forEach(t=>t.stop());setStream(null)};
- const start=async(f=facing)=>{setErr("");try{stream?.getTracks().forEach(t=>t.stop());const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:f},audio:false});setStream(s);if(v.current){v.current.srcObject=s;v.current.play()}}catch(e){setErr("Camera unavailable — you can upload a photo instead.")}};
- useEffect(()=>()=>stream?.getTracks().forEach(t=>t.stop()),[stream]);
- useEffect(()=>{if(v.current&&stream){v.current.srcObject=stream}},[stream,shot]);
- const snap=()=>{const el=v.current;if(!el)return;const c=document.createElement("canvas");c.width=el.videoWidth;c.height=el.videoHeight;const x=c.getContext("2d");if(facing==="user"){x.translate(c.width,0);x.scale(-1,1)}x.drawImage(el,0,0);c.toBlob(b=>{setShot({blob:b,url:URL.createObjectURL(b)});stop()},"image/jpeg",.9)};
- const pick=e=>{const f=e.target.files?.[0];if(!f)return;if(!f.type.startsWith("image/"))return setErr("Images only.");if(f.size>8*1024*1024)return setErr("Max 8MB.");stop();setShot({blob:f,url:URL.createObjectURL(f)})};
- const submit=async()=>{setBusy(true);setMsg("");const fd=new FormData();fd.append("photo",shot.blob,"photo.jpg");fd.append("name",name);fd.append("caption",cap);
-  const r=await fetch("/api/photos",{method:"POST",body:fd});const j=await r.json().catch(()=>({}));setBusy(false);
-  if(r.ok){setShot(null);setCap("");setMsg("Posted! It's in the Gallery now.");window.dispatchEvent(new Event("photos-updated"))}else setMsg(j.error||"Upload failed")};
- return(<div className="space-y-3 text-sm">
-  {!shot?<><div className="relative rounded-xl overflow-hidden bg-black aspect-[3/4] max-h-[50vh] mx-auto grid place-items-center">
-    <video ref={v} playsInline muted autoPlay className={`w-full h-full object-cover ${facing==="user"?"-scale-x-100":""} ${stream?"":"hidden"}`}/>
-    {!stream&&<button onClick={()=>start()} className="rounded-full bg-white/15 px-4 py-2">Start camera</button>}</div>
-   {stream&&<div className="flex items-center justify-center gap-6"><button onClick={()=>{const f=facing==="user"?"environment":"user";setFacing(f);start(f)}} className="text-2xl" title="Switch camera">🔄</button>
-    <button onClick={snap} className="w-16 h-16 rounded-full border-4 border-white bg-white/80" aria-label="Shutter"/><button onClick={stop} className="text-xs text-white/60">Stop</button></div>}
-   <label className="block text-center cursor-pointer rounded-full bg-white/10 px-4 py-2">⬆️ Upload from device<input type="file" accept="image/*" onChange={pick} className="hidden"/></label></>
-  :<><img src={shot.url} alt="Preview" className="rounded-xl max-h-[45vh] mx-auto"/>
-   <input value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Your name (optional)" className="w-full rounded-lg bg-white/10 px-3 py-2 outline-none"/>
-   <input value={cap} onChange={e=>setCap(e.target.value)} maxLength={140} placeholder="Caption (optional)" className="w-full rounded-lg bg-white/10 px-3 py-2 outline-none"/>
-   <div className="flex gap-2"><button onClick={()=>{setShot(null);setMsg("")}} className="flex-1 rounded-full bg-white/10 py-2">Retake</button>
-   <button disabled={busy} onClick={submit} className="flex-1 rounded-full bg-violet-600 py-2 font-semibold disabled:opacity-50">{busy?"Posting…":"Post to Gallery"}</button></div></>}
-  {err&&<p className="text-amber-300">{err}</p>}{msg&&<p className="text-emerald-300">{msg}</p>}
-  <p className="text-xs text-white/40">Photos you post are public in the Gallery.</p></div>)}
-function Gallery(){const [items,setItems]=useState(null);const [open,setOpen]=useState(null);
- const load=()=>fetch("/api/photos",{cache:"no-store"}).then(r=>r.json()).then(setItems).catch(()=>setItems([]));
- useEffect(()=>{load();window.addEventListener("photos-updated",load);return()=>window.removeEventListener("photos-updated",load)},[]);
- if(!items)return <p className="text-sm text-white/50">Loading…</p>;
- if(!items.length)return <p className="text-sm text-white/60">No photos yet — be the first with the Camera app 📷</p>;
- return(<div><div className="grid grid-cols-3 gap-1">{items.map((p,i)=>(<button key={p.id} onClick={()=>setOpen(i)} className="aspect-square overflow-hidden rounded-md bg-white/5"><img src={`/api/photos/${p.id}`} alt={p.caption||"Photo"} loading="lazy" className="w-full h-full object-cover"/></button>))}</div>
-  {open!==null&&items[open]&&<div className="fixed inset-0 z-[200] bg-black/90 flex flex-col items-center justify-center p-4" onClick={()=>setOpen(null)}>
-   <img src={`/api/photos/${items[open].id}`} alt="" className="max-h-[78vh] max-w-full rounded-lg"/>
-   <p className="mt-3 text-sm">{items[open].caption}</p><p className="text-xs text-white/50">— {items[open].name} · {new Date(items[open].at).toLocaleDateString()}</p>
-   <div className="mt-3 flex gap-6 text-2xl" onClick={e=>e.stopPropagation()}><button disabled={open===0} onClick={()=>setOpen(open-1)} className="disabled:opacity-30">‹</button><button onClick={()=>setOpen(null)} className="text-sm">Close</button><button disabled={open===items.length-1} onClick={()=>setOpen(open+1)} className="disabled:opacity-30">›</button></div></div>}</div>)}
 function Notes(){const [list,setList]=useState([]);const [name,setName]=useState("");const [msg,setMsg]=useState("");
  useEffect(()=>{try{setList(JSON.parse(localStorage.getItem("et-notes")||"[]"))}catch{}},[]);
  const add=e=>{e.preventDefault();if(!msg.trim())return;const n=[{name:name.trim()||"Anonymous",msg:msg.trim(),at:Date.now()},...list];setList(n);localStorage.setItem("et-notes",JSON.stringify(n));setMsg("")};
@@ -149,7 +112,7 @@ function Notes(){const [list,setList]=useState([]);const [name,setName]=useState
   <p className="text-xs text-white/40">Preview only: notes are saved in this browser.</p></form>
   {list.map(n=>(<div key={n.at} className="rounded-xl bg-yellow-200/90 text-black p-3"><p>{n.msg}</p><p className="text-xs opacity-60 mt-1">— {n.name}</p></div>))}</div>)}
 
-const CONTENT={empowertours:<EmpowerTours/>,camera:<Camera/>,gallery:<Gallery/>,tours:<Tours/>,music:<Music/>,blog:<Blog/>,about:<About/>,notes:<Notes/>,
+const CONTENT={empowertours:<EmpowerTours/>,tours:<Tours/>,music:<Music/>,blog:<Blog/>,about:<About/>,notes:<Notes/>,
  shop:<LinkOut path="/shop" text="Gear, merch and tour passes are sold through the existing EmpowerTours shop." cta="Open the shop"/>,
  schedule:<LinkOut path="/scheduling" text="Book a climbing session or a call using the existing scheduling page." cta="Book a time"/>};
 
