@@ -1,0 +1,18 @@
+{
+  // earvingallardo.com: static Next.js export (out/) + /api/github, served by a Worker.
+  "name": "earvingallardo",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "account_id": "a2f5dea015d1fbc27d0cc83dd0350173",
+  "assets": { "directory": "./out", "binding": "ASSETS", "run_worker_first": true, "html_handling": "auto-trailing-slash", "not_found_handling": "404-page" },
+  "routes": [
+    { "pattern": "earvingallardo.com", "custom_domain": true },
+    { "pattern": "www.earvingallardo.com", "custom_domain": true }
+  ],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  // Public OAuth 2.0 client id of the X app "EarvinGallardoOsNotes". The secret is a Worker secret (X_CLIENT_SECRET).
+  "vars": { "X_CLIENT_ID": "azM0VFI0ODJjMWNmM0VWc2dXb1A6MTpjaQ" },
+  "d1_databases": [{ "binding": "DB", "database_name": "earvingallardo-notes", "database_id": "edf74f22-d121-4c37-bb4b-86a66ca4488c" }]
+}
