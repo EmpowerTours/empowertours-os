@@ -293,6 +293,16 @@ async function walletSession(req, env) {
   return s?.address ? s : null;
 }
 
+// Compared with letters and digits only, lowercased ("Earvin Gallardo" -> "earvingallardo").
+const RESERVED_NAMES = [
+  "earvin",
+  "earvingallardo",
+  "earvingallardobravo",
+  "unify34",
+  "empowertours",
+  "admin",
+];
+
 async function walletAuth(request, env, url) {
   if (url.pathname === "/api/auth/wallet/challenge") {
     const raw = url.searchParams.get("address") || "";
@@ -358,16 +368,43 @@ async function walletAuth(request, env, url) {
       return json({ error: "Keep your name under 40 characters." }, 400);
     if (/https?:\/\/|www\.|@/i.test(name))
       return json({ error: "Names can't contain links or @handles." }, 400);
+    if (name && /^0x[0-9a-f]/i.test(name))
+      return json({ error: "Pick a name, not an address." }, 400);
+    // Nobody else can register the site owner's names.
+    const squash = (v) => v.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (name && RESERVED_NAMES.includes(squash(name)))
+      return json({ error: "That name is reserved." }, 409);
     if (!name)
       await env.DB.prepare("DELETE FROM wallet_names WHERE address = ?")
         .bind(w.address)
         .run();
-    else
-      await env.DB.prepare(
-        "INSERT INTO wallet_names (address, name) VALUES (?, ?) ON CONFLICT(address) DO UPDATE SET name = excluded.name, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')",
+    else {
+      // A registered name belongs to one wallet (unique index, case-insensitive).
+      const taken = await env.DB.prepare(
+        "SELECT address FROM wallet_names WHERE name = ? COLLATE NOCASE AND address != ?",
       )
-        .bind(w.address, name)
-        .run();
+        .bind(name, w.address)
+        .first();
+      if (taken)
+        return json(
+          { error: "That name is already registered to another wallet." },
+          409,
+        );
+      try {
+        await env.DB.prepare(
+          "INSERT INTO wallet_names (address, name) VALUES (?, ?) ON CONFLICT(address) DO UPDATE SET name = excluded.name, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')",
+        )
+          .bind(w.address, name)
+          .run();
+      } catch (e) {
+        if (/UNIQUE/i.test(String(e?.message || e)))
+          return json(
+            { error: "That name is already registered to another wallet." },
+            409,
+          );
+        throw e;
+      }
+    }
     return json({ wallet: { address: w.address, name } });
   }
   return json({ error: "Not found." }, 404);

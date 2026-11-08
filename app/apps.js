@@ -675,25 +675,32 @@ export function Notes() {
               <WalletMark address={wallet.address} /> Signed in as <b className="font-mono">{short(wallet.address)}</b>
             </p>
             <label htmlFor="wname" className="font-display text-lg font-semibold block mt-3">
-              Add a name to your wallet <span className="text-sm font-normal text-night/60">(optional)</span>
+              Register a name for this wallet?
             </label>
+            <p className="text-sm text-night/75 mt-1">
+              Your notes will show this name instead of <span className="font-mono">{short(wallet.address)}</span>. It's linked to your wallet, and no one else can take it.
+            </p>
             <div className="mt-2 flex gap-2">
               <input id="wname" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} maxLength={40} autoComplete="nickname" placeholder="Your name" className="flex-1 min-w-0 rounded-xl bg-white/70 px-4 py-2.5 placeholder:text-night/40 outline-none focus:ring-2 focus:ring-night" />
-              <button disabled={state.busy} className="rounded-xl bg-night text-bone px-5 font-semibold disabled:opacity-60">Save</button>
+              <button disabled={state.busy} className="rounded-xl bg-night text-bone px-5 font-semibold disabled:opacity-60">Register</button>
               <button type="button" onClick={() => setEditing(false)} className="rounded-xl bg-white/70 hover:bg-white px-4 font-semibold">
                 Skip
               </button>
             </div>
-            <p className="text-xs text-night/60 mt-2">Shown on your notes next to your wallet address. Change it any time.</p>
+            <p className="text-xs text-night/60 mt-2">Skip to post as your wallet address. You can register or change the name any time.</p>
           </form>
         ) : (
           <form onSubmit={send}>
             <p className="text-sm flex items-center gap-2 flex-wrap">
               <WalletMark address={wallet.address} />
-              Leaving a note as {wallet.name ? <b>{wallet.name}</b> : null}
-              <span className="font-mono text-night/70">{short(wallet.address)}</span>
+              Leaving a note as{" "}
+              {wallet.name ? (
+                <b title={wallet.address}>{wallet.name}</b>
+              ) : (
+                <b className="font-mono" title={wallet.address}>{short(wallet.address)}</b>
+              )}
               <button type="button" onClick={() => { setNameDraft(wallet.name || ""); setEditing(true); }} className="underline underline-offset-2 text-night/70 hover:text-night">
-                {wallet.name ? "change name" : "add a name"}
+                {wallet.name ? "change name" : "register a name"}
               </button>
               <button type="button" onClick={signOut} className="underline underline-offset-2 text-night/70 hover:text-night">
                 sign out
@@ -730,8 +737,9 @@ export function Notes() {
               {n.wallet ? (
                 <>
                   <WalletMark address={n.wallet} size={22} />
-                  {n.who && <span className="font-semibold truncate">{n.who}</span>}
-                  <span className={`font-mono text-[11px] shrink-0 ${n.who ? "text-mist" : "font-semibold text-bone"}`}>{short(n.wallet)}</span>
+                  <span title={n.wallet} className={`font-semibold truncate ${n.who ? "" : "font-mono text-sm"}`}>
+                    {n.who || short(n.wallet)}
+                  </span>
                   <Wallet size={13} className="text-mango shrink-0" aria-label="Signed with a wallet" />
                 </>
               ) : n.verified ? (
