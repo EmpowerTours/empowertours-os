@@ -244,9 +244,15 @@ function PowerOn({ onPower, now }) {
           </div>
         </div>
       </div>
-      <p className="relative px-6 sm:px-10 pb-6 text-sm text-mist max-w-[60ch]">
-        The tiles behind this are my last year of commits. Each one is a day.
-      </p>
+      <footer className="relative px-6 sm:px-10 pb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-2 text-sm text-mist">
+        <p className="max-w-[60ch]">The tiles behind this are my last year of commits. Each one is a day.</p>
+        <p className="text-xs">
+          © {new Date().getFullYear()} Earvin Gallardo ·{" "}
+          <a href="/privacy" className="underline underline-offset-2 hover:text-bone">
+            Privacy
+          </a>
+        </p>
+      </footer>
     </motion.div>
   );
 }

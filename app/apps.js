@@ -84,7 +84,7 @@ export function About({ open }) {
       <div className="flex items-center gap-5">
         <img
           src="/hero.jpg"
-          alt=""
+          alt="Earvin Gallardo"
           className="w-20 h-20 rounded-2xl object-cover"
         />
         <div>
@@ -363,7 +363,7 @@ export function Music() {
       <div className="flex flex-col sm:flex-row gap-6 sm:items-end">
         <img
           src={SONGS[p.idx].img}
-          alt=""
+          alt={`Cover art for ${SONGS[p.idx].n}`}
           className="w-40 h-40 rounded-2xl object-cover bg-white/5 shadow-2xl"
         />
         <div>
@@ -450,7 +450,7 @@ export function XProfile() {
       <div className="flex items-center gap-5">
         <img
           src={p?.avatar || "/hero.jpg"}
-          alt=""
+          alt="Earvin Gallardo's X profile photo"
           className="w-20 h-20 rounded-full object-cover bg-white/10"
         />
         <div className="min-w-0">

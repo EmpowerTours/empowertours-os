@@ -587,9 +587,59 @@ async function auth(request, env, url) {
   return json({ error: "Not found." }, 404);
 }
 
+// Security headers on every response. The CSP allows exactly what the pages load: this site,
+// the IPFS gateway for songs and covers, X for older notes' avatars, and Cloudflare Web Analytics.
+// Next's static export inlines its bootstrap scripts, hence 'unsafe-inline' for scripts.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https://harlequin-used-hare-224.mypinata.cloud https://pbs.twimg.com",
+  "media-src 'self' https://harlequin-used-hare-224.mypinata.cloud",
+  "font-src 'self'",
+  "connect-src 'self' https://cloudflareinsights.com",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join("; ");
+const SECURITY_HEADERS = {
+  "content-security-policy": CSP,
+  "strict-transport-security": "max-age=31536000; includeSubDomains",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "permissions-policy":
+    "camera=(), microphone=(), geolocation=(), payment=(), publickey-credentials-get=(self), publickey-credentials-create=(self)",
+};
+function secure(res) {
+  const out = new Response(res.body, res); // copies status and headers into a mutable response
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) out.headers.set(k, v);
+  return out;
+}
+
+async function health(env) {
+  const t = Date.now();
+  const db = await env.DB.prepare("SELECT 1 AS ok")
+    .first()
+    .then(() => "ok")
+    .catch(() => "down");
+  return json(
+    { ok: db === "ok", db, ms: Date.now() - t },
+    db === "ok" ? 200 : 503,
+  );
+}
+
 export default {
   async fetch(request, env, ctx) {
+    return secure(await route(request, env, ctx));
+  },
+};
+
+async function route(request, env, ctx) {
+  {
     const url = new URL(request.url);
+    if (url.pathname === "/api/health") return health(env);
     if (url.hostname.startsWith("www.")) {
       url.hostname = url.hostname.slice(4);
       return Response.redirect(url.toString(), 301);
@@ -638,5 +688,5 @@ export default {
       }
     }
     return env.ASSETS.fetch(request);
-  },
-};
+  }
+}
