@@ -30,7 +30,14 @@ async function send(env, subject, text) {
     "",
     text,
   ].join("\r\n");
-  await env.ALERT.send(new EmailMessage(FROM, TO, raw));
+  try {
+    await env.ALERT.send(new EmailMessage(FROM, TO, raw));
+    await env.STATE.put("last_email", `${new Date().toISOString()} sent: ${subject}`);
+  } catch (e) {
+    // Record the failure so it can be checked without logs, then rethrow so the run shows as an error.
+    await env.STATE.put("last_email", `${new Date().toISOString()} FAILED: ${e.message}`);
+    throw e;
+  }
 }
 
 export default {
