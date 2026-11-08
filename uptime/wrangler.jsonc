@@ -1,0 +1,11 @@
+// Uptime monitor for earvingallardo.com. Separate Worker, so a broken site deploy can't silence it.
+{
+  "name": "earvingallardo-uptime",
+  "main": "index.js",
+  "compatibility_date": "2026-11-01",
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "kv_namespaces": [{ "binding": "STATE", "id": "b3d58c9f7b52403a989de5425d7ec702" }],
+  // Email Routing is set up on csecsystems.com; unify34@gmail.com is a verified destination.
+  "send_email": [{ "name": "ALERT", "destination_address": "unify34@gmail.com" }],
+  "workers_dev": false
+}
