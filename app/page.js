@@ -2,12 +2,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Clapperboard,
   Globe,
+  Mic,
   Music2,
   Newspaper,
   Pause,
   Play,
-  Power,
+  ScanFace,
+  ShoppingBag,
   SkipForward,
   Sprout,
   StickyNote,
@@ -24,8 +27,10 @@ import {
   Updates,
   XProfile,
   useGitHub,
+  usePlayer,
 } from "./apps";
 import { SONGS } from "./data";
+import { Artists, Canon, Films, Flaps, Shop } from "./gallery";
 
 /* ---------- brand marks (not in the icon set) ---------- */
 
@@ -54,53 +59,28 @@ const XMark = ({ size = 20 }) => (
 
 /* ---------- apps ---------- */
 
+const GOLD = "bg-mango text-night border-mango";
+const DARK = "bg-plum text-bone border-white/10";
 const APPS = {
-  about: {
-    title: "About",
-    icon: <User size={24} />,
-    tile: "bg-violet text-night",
-    w: 860,
-  },
-  music: {
-    title: "Music",
-    icon: <Music2 size={24} />,
-    tile: "bg-mango text-night",
-    w: 760,
-  },
-  sites: {
-    title: "Sites",
-    icon: <Globe size={24} />,
-    tile: "bg-bone text-night",
-    w: 1040,
-  },
-  github: {
-    title: "GitHub",
-    icon: <GitHubMark />,
-    tile: "bg-plum text-bone ring-1 ring-white/15",
-    w: 960,
-  },
-  x: {
-    title: "X",
-    icon: <XMark />,
-    tile: "bg-black text-bone ring-1 ring-white/15",
-    w: 640,
-  },
-  empowertours: {
-    title: "EmpowerTours",
-    icon: <Sprout size={24} />,
-    tile: "bg-[#3E7C4F] text-bone",
-    w: 820,
-  },
-  notes: { title: "Notes", icon: <StickyNote size={24} />, tile: "bg-[#F6D27A] text-night", w: 820 },
-  updates: {
-    title: "Updates",
-    icon: <Newspaper size={24} />,
-    tile: "bg-[#5B3B8C] text-bone",
-    w: 720,
-  },
+  artists: { title: "For artists", icon: <Mic size={22} />, tile: GOLD, w: 980, isNew: true },
+  shop: { title: "Shop", icon: <ShoppingBag size={22} />, tile: GOLD, w: 1040, isNew: true },
+  canon: { title: "Who he is", icon: <ScanFace size={22} />, tile: GOLD, w: 1080, isNew: true },
+  films: { title: "Films", icon: <Clapperboard size={22} />, tile: GOLD, w: 1040, isNew: true },
+  about: { title: "About", icon: <User size={22} />, tile: DARK, w: 860, gap: true },
+  music: { title: "Music", icon: <Music2 size={22} />, tile: DARK, w: 760 },
+  sites: { title: "Sites", icon: <Globe size={22} />, tile: DARK, w: 1040 },
+  github: { title: "GitHub", icon: <GitHubMark />, tile: DARK, w: 960 },
+  x: { title: "X", icon: <XMark />, tile: DARK, w: 640 },
+  empowertours: { title: "EmpowerTours", icon: <Sprout size={22} />, tile: DARK, w: 820 },
+  notes: { title: "Notes", icon: <StickyNote size={22} />, tile: DARK, w: 820 },
+  updates: { title: "Updates", icon: <Newspaper size={22} />, tile: DARK, w: 720 },
 };
 const render = (id, open) =>
   ({
+    artists: <Artists />,
+    shop: <Shop />,
+    canon: <Canon />,
+    films: <Films />,
     about: <About open={open} />,
     music: <Music />,
     sites: <Sites />,
@@ -128,11 +108,11 @@ const hhmm = (d) =>
 /* ---------- wallpaper: a year of commits as a ribbon of tiles ---------- */
 
 const TILE = [
-  "bg-white/[.045]",
-  "bg-violet/25",
-  "bg-violet/45",
-  "bg-violet/75",
-  "bg-mango",
+  "bg-mango/[.07]",
+  "bg-mango/20",
+  "bg-mango/40",
+  "bg-gold2/60",
+  "bg-gold2",
 ];
 function Ribbon({ dim }) {
   const gh = useGitHub();
@@ -151,7 +131,7 @@ function Ribbon({ dim }) {
       className={`absolute inset-0 overflow-hidden transition-opacity duration-700 ${dim ? "opacity-40" : "opacity-100"}`}
       style={{ perspective: "1400px" }}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_20%,rgba(131,110,249,.22),transparent_55%),radial-gradient(ellipse_at_10%_90%,rgba(242,165,65,.10),transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_75%_10%,#2A2112_0%,#120F0B_45%,#0A0908_100%)]" />
       <div
         className="absolute left-1/2 top-1/2 flex gap-[7px]"
         style={{
@@ -170,7 +150,7 @@ function Ribbon({ dim }) {
                     ? { animationDelay: `${(wi * 7 + di) * 2.2}ms` }
                     : undefined
                 }
-                className={`block w-[30px] h-[30px] rounded-[6px] ${x.date.startsWith("pad") ? "opacity-0" : TILE[x.level]} ${gh ? "cell-on" : ""} ${x.date === last ? "cell-today bg-mango" : ""}`}
+                className={`block w-[30px] h-[30px] rounded-[3px] ${x.date.startsWith("pad") ? "opacity-0" : TILE[x.level]} ${gh ? "cell-on" : ""} ${x.date === last ? "cell-today bg-mango" : ""}`}
               />
             ))}
           </div>
@@ -180,80 +160,214 @@ function Ribbon({ dim }) {
   );
 }
 
-/* ---------- power-on screen ---------- */
+/* ---------- TV splash: the commercial, once per visitor ---------- */
 
-function PowerOn({ onPower, now }) {
-  const [on, setOn] = useState(false);
-  const flip = (app) => {
-    setOn(true);
-    setTimeout(() => onPower(app), 380);
+const SEEN_KEY = "eg_ad_seen";
+const POWER_PATH = "M12 2v10M18.4 6.6a9 9 0 1 1-12.8 0";
+const PowerGlyph = ({ size = 40 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+    <path d={POWER_PATH} />
+  </svg>
+);
+
+function TvSplash({ onDone }) {
+  const tv = useRef(null);
+  const scr = useRef(null);
+  const ad = useRef(null);
+  const snow = useRef(null);
+  const osd = useRef(null);
+  const dot = useRef(null);
+  const [stage, setStage] = useState("standby"); // standby | on | playing
+  const [muted, setMuted] = useState(false);
+  const [src, setSrc] = useState(null);
+  const snowOn = useRef(false);
+
+  useEffect(() => {
+    setSrc(matchMedia("(max-aspect-ratio: 4/5)").matches ? "/pitch_v.mp4" : "/pitch.mp4");
+    const ctx = snow.current.getContext("2d");
+    let raf;
+    const noise = () => {
+      if (snowOn.current) {
+        const im = ctx.createImageData(320, 180);
+        for (let i = 0; i < im.data.length; i += 4) {
+          const v = (Math.random() * 255) | 0;
+          im.data[i] = im.data[i + 1] = im.data[i + 2] = v;
+          im.data[i + 3] = 255;
+        }
+        ctx.putImageData(im, 0, 0);
+      }
+      raf = requestAnimationFrame(noise);
+    };
+    noise();
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const anim = (el, kf, ms, easing = "cubic-bezier(.2,.7,.2,1)") =>
+    el.animate(kf, { duration: ms, easing, fill: "forwards" }).finished;
+
+  const turnOn = async () => {
+    setStage("on");
+    const s = scr.current;
+    s.style.visibility = "visible";
+    s.style.background = "#fff";
+    await anim(s, [{ transform: "scale(0,.004)", filter: "brightness(3)" }, { transform: "scale(1,.004)", filter: "brightness(3)" }], 170);
+    await anim(s, [{ transform: "scale(1,.004)", filter: "brightness(3)" }, { transform: "scale(1,1)", filter: "brightness(1.6)" }], 230);
+    s.style.background = "#000";
+    snowOn.current = true;
+    snow.current.style.opacity = 1;
+    anim(s, [{ filter: "brightness(1.6)" }, { filter: "brightness(1)" }], 300);
+    osd.current.style.opacity = 1;
+    try {
+      await ad.current.play();
+    } catch {
+      ad.current.muted = true;
+      setMuted(true);
+      try { await ad.current.play(); } catch {}
+    }
+    await new Promise((r) => setTimeout(r, 380));
+    await anim(snow.current, [{ opacity: 1 }, { opacity: 0 }], 320);
+    snowOn.current = false;
+    setStage("playing");
+    setTimeout(() => osd.current && anim(osd.current, [{ opacity: 1 }, { opacity: 0 }], 600), 2200);
   };
+
+  const turnOff = async () => {
+    try { localStorage.setItem(SEEN_KEY, "1"); } catch {}
+    ad.current?.pause();
+    if (stage !== "standby") {
+      const s = scr.current;
+      s.style.background = "#fff";
+      await anim(s, [{ transform: "scale(1,1)", filter: "brightness(1)" }, { transform: "scale(1,.004)", filter: "brightness(4)" }], 200, "ease-in");
+      await anim(s, [{ transform: "scale(1,.004)" }, { transform: "scale(0,.004)" }], 160, "ease-in");
+      dot.current.style.opacity = 1;
+      await anim(dot.current, [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.2)" }], 500, "ease-out");
+    }
+    await anim(tv.current, [{ opacity: 1 }, { opacity: 0 }], 450);
+    onDone();
+  };
+
+  const ctl = "label px-3.5 py-2.5 border border-bone/30 bg-night/55 text-bone hover:border-mango hover:text-gold2";
   return (
-    <motion.div
-      className="fixed inset-0 z-[100] flex flex-col"
-      exit={{ opacity: 0, transition: { duration: 0.45 } }}
-    >
-      <div className="absolute inset-0 bg-gradient-to-r from-night/85 via-night/50 to-night/10" />
-      <div className="relative flex justify-between px-6 sm:px-10 pt-6 text-sm text-mist">
-        <span>earvingallardo.com</span>
-        <span className="tabular-nums">{now ? hhmm(now) : ""}</span>
-      </div>
-      <div className="relative flex-1 flex flex-col justify-center px-6 sm:px-10 max-w-6xl">
-        <h1 className="font-display font-bold tracking-[-0.04em] leading-[.86] text-[clamp(64px,13vw,190px)]">
-          Earvin
-          <br />
-          Gallardo
-        </h1>
-        <p className="mt-6 text-xl sm:text-2xl text-bone/85 max-w-[34ch]">
-          Music artist, developer and founder. Marine Corps veteran.
-        </p>
-        <div className="mt-10 flex flex-wrap items-center gap-5">
-          <button
-            onClick={() => flip()}
-            role="switch"
-            aria-checked={on}
-            className="group flex items-center gap-4 rounded-full bg-white/[.06] hover:bg-white/[.1] border border-white/10 pl-2 pr-6 py-2"
-          >
-            <span
-              className={`relative w-[74px] h-[40px] rounded-full transition-colors duration-300 ${on ? "bg-mango" : "bg-plum"}`}
-            >
-              <span
-                className={`absolute top-1 w-8 h-8 rounded-full bg-bone grid place-items-center text-night shadow-lg transition-all duration-300 ${on ? "left-[38px]" : "left-1"}`}
-              >
-                <Power size={16} />
-              </span>
-            </span>
-            <span className="font-display text-lg font-semibold">Power on</span>
-          </button>
-          <div className="flex flex-wrap gap-2">
-            {["music", "sites", "github", "about", "notes"].map((k) => (
-              <button
-                key={k}
-                onClick={() => flip(k)}
-                className="rounded-full px-4 py-2 text-sm bg-white/[.04] hover:bg-white/[.1] border border-white/10"
-              >
-                {k === "music"
-                  ? "Play my music"
-                  : k === "sites"
-                    ? "See what I've built"
-                    : k === "github"
-                      ? "What I'm coding"
-                      : k === "about" ? "About me" : "Leave a note"}
-              </button>
-            ))}
-          </div>
+    <section ref={tv} aria-label="Commercial" className="fixed inset-0 z-[200] bg-black grid place-items-center overflow-hidden">
+      <div ref={scr} className="absolute inset-0 bg-black overflow-hidden" style={{ visibility: "hidden", transformOrigin: "50% 50%" }}>
+        <video ref={ad} src={src || undefined} playsInline preload="auto" onEnded={turnOff} className="absolute inset-0 w-full h-full object-contain bg-black" />
+        <canvas ref={snow} width={320} height={180} className="absolute inset-0 w-full h-full opacity-0" style={{ imageRendering: "pixelated" }} />
+        <div className="crt" />
+        <div ref={osd} className="absolute top-7 right-9 font-mono font-bold text-[34px] tracking-[.06em] text-[#7CFF8A] opacity-0" style={{ textShadow: "0 0 10px rgba(124,255,138,.8)" }}>
+          CH 34<small className="block text-[13px] tracking-[.2em] text-right">EMPOWERTOURS</small>
         </div>
       </div>
-      <footer className="relative px-6 sm:px-10 pb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-2 text-sm text-mist">
-        <p className="max-w-[60ch]">The tiles behind this are my last year of commits. Each one is a day.</p>
-        <p className="text-xs">
-          © {new Date().getFullYear()} Earvin Gallardo ·{" "}
-          <a href="/privacy" className="underline underline-offset-2 hover:text-bone">
-            Privacy
-          </a>
+      {stage === "standby" && (
+        <div className="relative z-[3] flex flex-col items-center gap-6 text-center px-6">
+          <button onClick={turnOn} aria-label="Turn on the TV and play the commercial" className="breathe w-[108px] h-[108px] rounded-full border-2 border-mango grid place-items-center text-gold2 hover:bg-mango hover:text-night">
+            <PowerGlyph />
+          </button>
+          <b className="font-display font-extrabold text-[15px] tracking-[.2em]">EARVIN GALLARDO</b>
+          <p className="label text-mist tracking-[.3em]">Press power · sound on</p>
+          <button onClick={turnOff} className="label text-[10px] text-mist/70 underline underline-offset-4 hover:text-bone mt-2">
+            Skip to the site
+          </button>
+        </div>
+      )}
+      <span className={`absolute right-[30px] bottom-[26px] w-2 h-2 rounded-full z-[3] ${stage === "standby" ? "bg-[#E5484D] shadow-[0_0_10px_#E5484D]" : "bg-[#7CFF8A] shadow-[0_0_10px_#7CFF8A]"}`} />
+      <span ref={dot} className="absolute left-1/2 top-1/2 w-1.5 h-1.5 -m-[3px] rounded-full bg-white opacity-0 z-[5]" style={{ boxShadow: "0 0 30px 12px rgba(255,255,255,.7)" }} />
+      <div className={`absolute right-6 bottom-[22px] flex gap-2 z-[4] transition-opacity duration-500 ${stage === "playing" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <button className={ctl} onClick={() => { ad.current.muted = !ad.current.muted; setMuted(ad.current.muted); }}>
+          {muted ? "Unmute" : "Mute"}
+        </button>
+        <button className={ctl} onClick={turnOff}>Skip ▸</button>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- landing: Earvin on film, face box, split-flap name ---------- */
+
+// Face box in source video coords (1280x720), mapped through object-fit: cover.
+const FACES = [[520, 120, 360, 420], [560, 110, 330, 400], [600, 130, 320, 390], [590, 120, 330, 400]];
+
+function useFaceBox() {
+  const [box, setBox] = useState(null);
+  useEffect(() => {
+    let fi = 0;
+    const place = () => {
+      const W = innerWidth, H = innerHeight, vw = 1280, vh = 720, s = Math.max(W / vw, H / vh);
+      const ox = (W - vw * s) / 2, oy = (H - vh * s) / 2;
+      const [x, y, w, h] = FACES[fi % FACES.length];
+      setBox({ left: ox + x * s, top: oy + y * s, width: w * s, height: h * s, conf: (0.93 + Math.random() * 0.06).toFixed(2) });
+    };
+    place();
+    const t = setInterval(() => { fi++; place(); }, 1000);
+    addEventListener("resize", place);
+    return () => { clearInterval(t); removeEventListener("resize", place); };
+  }, []);
+  return box;
+}
+
+const LEDE_SONGS = ["OYASUMI", "Dime Que Si", "Suddenly", "Money Making Machine", "Killah", "MARINA"];
+
+function Boot({ onPower, now, replay }) {
+  const box = useFaceBox();
+  const { idx, play } = usePlayer();
+  const btn = "label px-5 py-3.5 border border-white/[.18] bg-night/35 backdrop-blur-md hover:border-mango";
+  return (
+    <motion.section
+      className="fixed inset-0 z-[100] overflow-hidden bg-night"
+      exit={{ opacity: 0, scale: 1.03, transition: { duration: 0.6 } }}
+    >
+      <video src="/earvin.mp4" poster="/still.jpg" autoPlay muted loop playsInline aria-hidden className="absolute inset-0 w-full h-full object-cover" style={{ filter: "saturate(.9) contrast(1.05)" }} />
+      <div className="absolute inset-0" style={{ background: "linear-gradient(90deg,rgba(10,9,8,.92) 0%,rgba(10,9,8,.55) 42%,rgba(10,9,8,.05) 70%),linear-gradient(0deg,rgba(10,9,8,.95) 0%,rgba(10,9,8,0) 45%)" }} />
+      <div className="grain" aria-hidden />
+      {box && (
+        <div aria-hidden className="hidden sm:block absolute z-[2] border border-gold2/75 pointer-events-none transition-all duration-[900ms] ease-[cubic-bezier(.3,.7,.2,1)] before:absolute before:-left-0.5 before:-top-0.5 before:w-2.5 before:h-2.5 before:border-2 before:border-r-0 before:border-b-0 before:border-gold2 after:absolute after:-right-0.5 after:-bottom-0.5 after:w-2.5 after:h-2.5 after:border-2 after:border-l-0 after:border-t-0 after:border-gold2" style={{ left: box.left, top: box.top, width: box.width, height: box.height }}>
+          <i className="absolute left-0 -top-5 font-mono text-[10px] tracking-[.06em] not-italic whitespace-nowrap">
+            earvin gallardo <em className="not-italic text-gold2">{box.conf}</em>
+          </i>
+        </div>
+      )}
+      <div className="absolute top-0 inset-x-0 z-[3] flex justify-between items-center px-4 sm:px-10 py-4 sm:py-[22px] border-b border-white/10">
+        <div className="flex items-baseline gap-3">
+          <b className="font-display font-extrabold text-[15px] tracking-[.18em] border-l-[3px] border-mango pl-2.5" style={{ fontStretch: "110%" }}>EARVIN</b>
+          <span className="font-mono text-[10px] tracking-[.14em] text-mist">GALLARDO.COM</span>
+        </div>
+        <span className="label text-mist tabular-nums">{now ? hhmm(now).toUpperCase() : ""}</span>
+      </div>
+      <div className="absolute z-[3] left-4 right-4 sm:right-auto sm:left-10 bottom-[120px] sm:bottom-16 max-w-[680px]">
+        <h1 className="sr-only">Earvin Gallardo</h1>
+        <Flaps word="EARVIN" delay={300} className="gap-1.5 mb-3.5" flapClass="w-[clamp(44px,7.4vw,96px)] h-[clamp(60px,10vw,128px)] text-[clamp(34px,6vw,80px)]" />
+        <p className="font-mono font-medium text-[13px] tracking-[.32em] text-gold2 mb-[18px] ml-0.5">GALLARDO BRAVO · UNIFY34</p>
+        <p className="text-[clamp(17px,1.5vw,21px)] leading-[1.45] text-[#E6DFD3] max-w-[600px]">
+          Music artist, developer and founder. Marine Corps veteran. The voice on{" "}
+          {LEDE_SONGS.map((n, k) => {
+            const i = SONGS.findIndex((s) => s.n === n);
+            return (
+              <span key={n}>
+                <button onClick={() => play(i)} className="text-gold2 hover:underline underline-offset-4">{n}</button>
+                {k < LEDE_SONGS.length - 2 ? ", " : k === LEDE_SONGS.length - 2 ? " and " : ""}
+              </span>
+            );
+          })}
+          . My songs, my code and the films.
         </p>
-      </footer>
-    </motion.div>
+        <div className="flex gap-2.5 mt-[26px] flex-wrap">
+          <button onClick={() => onPower()} className="label px-5 py-3.5 bg-bone text-night border border-bone flex items-center gap-2.5 hover:bg-gold2">
+            <PowerGlyph size={14} /> Power on
+          </button>
+          <button onClick={replay} className={btn}>▶ Watch the commercial</button>
+          <button onClick={() => onPower("artists")} className={btn}>For artists</button>
+          <button onClick={() => onPower("canon")} className={btn}>Meet him</button>
+          <button onClick={() => onPower("notes")} className={btn}>Leave a note</button>
+        </div>
+      </div>
+      <div className="absolute z-[3] left-4 sm:left-auto sm:right-10 bottom-[22px] sm:bottom-16 text-left sm:text-right">
+        <p className="font-mono text-[11px] leading-[1.8] tracking-[.12em] text-[#CFC7BA] uppercase">Now playing · {SONGS[idx].n}</p>
+        <p className="font-mono text-[11px] leading-[1.8] tracking-[.12em] text-[#CFC7BA] uppercase">Unify34 · on EmpowerTours</p>
+        <p className="font-mono text-[10px] tracking-[.1em] text-mist mt-1">
+          © {new Date().getFullYear()} Earvin Gallardo ·{" "}
+          <a href="/privacy" className="underline underline-offset-2 hover:text-bone">Privacy</a>
+        </p>
+      </div>
+    </motion.section>
   );
 }
 
@@ -264,12 +378,12 @@ function Win({ id, z, idx, mobile, focused, focus, close }) {
   const [max, setMax] = useState(false);
   const W = a.w;
   const box = max
-    ? { left: 16, right: 16, top: 52, bottom: 112 }
+    ? { left: 16, right: 16, top: 56, bottom: 104 }
     : {
         width: `min(${W}px, calc(100vw - 48px))`,
-        height: "min(80vh, 900px)",
-        left: `max(24px, calc(50% - ${W / 2}px + ${idx * 26}px))`,
-        top: `calc(56px + ${idx * 22}px)`,
+        height: "min(calc(100vh - 178px), 900px)",
+        left: `max(24px, calc(50% - ${W / 2}px + ${idx * 24}px))`,
+        top: `calc(60px + ${idx * 22}px)`,
       };
   return (
     <motion.section
@@ -277,51 +391,40 @@ function Win({ id, z, idx, mobile, focused, focus, close }) {
       drag={!mobile && !max}
       dragMomentum={false}
       onPointerDown={focus}
-      initial={{ opacity: 0, scale: 0.96, y: 16 }}
+      initial={{ opacity: 0, scale: 0.97, y: 14 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.96, y: 16 }}
+      exit={{ opacity: 0, scale: 0.97, y: 14 }}
       transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-      className={`${mobile ? "fixed inset-x-0 bottom-0 top-12 rounded-t-3xl" : "absolute rounded-3xl"} pane flex flex-col overflow-hidden ${focused ? "shadow-[0_40px_120px_-30px_rgba(0,0,0,.85)]" : "shadow-[0_20px_60px_-30px_rgba(0,0,0,.6)]"}`}
+      className={`${mobile ? "fixed inset-x-0 bottom-0 top-11" : "absolute"} pane flex flex-col overflow-hidden ${focused ? "shadow-[0_30px_80px_rgba(0,0,0,.6)]" : "shadow-[0_16px_40px_rgba(0,0,0,.45)]"}`}
       style={mobile ? { zIndex: z } : { zIndex: z, ...box }}
     >
       <header
         onDoubleClick={() => !mobile && setMax((m) => !m)}
-        className="flex items-center gap-3 px-5 h-12 shrink-0 cursor-grab active:cursor-grabbing select-none border-b border-white/[.06]"
+        className="flex items-center justify-between gap-3 px-3.5 h-11 shrink-0 cursor-grab active:cursor-grabbing select-none border-b border-white/10"
       >
-        {!mobile && (
-          <div className="flex gap-2">
-            <button
-              onClick={close}
-              aria-label={`Close ${a.title}`}
-              className="w-3.5 h-3.5 rounded-full bg-mango hover:brightness-110"
-            />
-            <button
-              onClick={close}
-              aria-label={`Minimise ${a.title}`}
-              className="w-3.5 h-3.5 rounded-full bg-mist/50 hover:bg-mist"
-            />
+        <span className="label text-mist truncate">
+          <b className="text-bone font-medium">{a.title}</b> · earvingallardo.com
+        </span>
+        <div className="flex gap-1.5 shrink-0">
+          {!mobile && (
             <button
               onClick={() => setMax((m) => !m)}
               aria-label={max ? "Restore window" : "Maximise window"}
-              className="w-3.5 h-3.5 rounded-full bg-violet hover:brightness-110"
-            />
-          </div>
-        )}
-        <span
-          className={`font-display font-semibold ${mobile ? "text-lg" : "flex-1 text-center -ml-16 text-[15px] text-bone/80"}`}
-        >
-          {a.title}
-        </span>
-        {mobile && (
+              className="w-[22px] h-[22px] grid place-items-center border border-white/[.18] font-mono text-[11px] hover:bg-mango hover:text-night hover:border-mango"
+            >
+              {max ? "▫" : "□"}
+            </button>
+          )}
           <button
             onClick={close}
-            className="ml-auto rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold"
+            aria-label={`Close ${a.title}`}
+            className="w-[22px] h-[22px] grid place-items-center border border-white/[.18] font-mono text-[11px] hover:bg-mango hover:text-night hover:border-mango"
           >
-            Done
+            ×
           </button>
-        )}
+        </div>
       </header>
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 sm:px-8 py-6 sm:py-8">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-[30px] py-5 sm:py-7">
         {render(id, focus.open)}
       </div>
     </motion.section>
@@ -333,6 +436,7 @@ function Win({ id, z, idx, mobile, focused, focus, close }) {
 export default function Page() {
   const now = useNow();
   const [powered, setPowered] = useState(false);
+  const [tv, setTv] = useState(false);
   const [wins, setWins] = useState([]);
   const [top, setTop] = useState(10);
   const [mobile, setMobile] = useState(false);
@@ -387,10 +491,16 @@ export default function Page() {
     const f = () => setMobile(window.innerWidth < 640);
     f();
     window.addEventListener("resize", f);
-    const q = new URLSearchParams(location.search).get("open");
+    const qs = new URLSearchParams(location.search);
+    const q = qs.get("open");
     if (q && APPS[q]) {
       setPowered(true);
       setWins([{ id: q, z: 11 }]);
+    } else {
+      // First visit: the TV with the commercial. After that it stays off unless asked for.
+      let seen = false;
+      try { seen = localStorage.getItem(SEEN_KEY) === "1"; } catch {}
+      if (!seen || qs.has("tv")) setTv(true);
     }
     return () => window.removeEventListener("resize", f);
   }, []);
@@ -400,6 +510,7 @@ export default function Page() {
     if (app) setTimeout(() => open(app), 350);
   };
   const focused = wins.reduce((a, b) => (!a || b.z > a.z ? b : a), null);
+  const tiles = Object.entries(APPS);
 
   return (
     <Player.Provider value={player}>
@@ -408,77 +519,83 @@ export default function Page() {
         <Ribbon dim={wins.length > 0} />
 
         {/* menu bar */}
-        {powered && (<div className="bar relative z-40 h-11 flex items-center gap-3 px-3 sm:px-4 text-sm border-b border-white/[.06]">
-          <button
-            onClick={() => {
-              setWins([]);
-              setPowered(false);
-            }}
-            title="Power off"
-            className="font-display font-bold tracking-tight rounded-lg px-2 py-1 hover:bg-white/10"
-          >
-            EG
-          </button>
-          <span className="hidden sm:inline font-display font-semibold text-bone/80">
-            {focused ? APPS[focused.id].title : "Earvin Gallardo"}
-          </span>
-          <div className="ml-auto flex items-center gap-1 sm:gap-2 min-w-0">
+        {powered && (
+          <div className="bar relative z-50 h-11 flex items-center gap-3 px-3 sm:px-[22px] border-b border-white/10">
             <button
-              onClick={toggle}
-              aria-label={playing ? "Pause" : "Play Unify34"}
-              className="w-8 h-8 grid place-items-center rounded-full bg-mango text-night shrink-0"
+              onClick={() => {
+                setWins([]);
+                setPowered(false);
+              }}
+              title="Power off"
+              className="font-display font-extrabold text-[13px] tracking-[.16em] border-l-[3px] border-mango pl-2 hover:text-gold2"
             >
-              {playing ? <Pause size={14} /> : <Play size={14} />}
+              EG
             </button>
-            <button
-              onClick={() => open("music")}
-              className="min-w-0 text-left px-1 hover:text-mango"
-            >
-              <span className="block truncate max-w-[34vw] sm:max-w-[240px]">
-                <span className="font-semibold">{SONGS[idx].n}</span>
-                <span className="text-mist"> by {SONGS[idx].a}</span>
-              </span>
-            </button>
-            <button
-              onClick={next}
-              aria-label="Next track"
-              className="hidden sm:grid w-8 h-8 place-items-center rounded-full hover:bg-white/10 shrink-0"
-            >
-              <SkipForward size={14} />
-            </button>
-            <span className="tabular-nums text-bone/80 pl-2 sm:pl-3 shrink-0">
-              {now ? hhmm(now) : ""}
+            <span className="hidden sm:inline font-mono text-[10px] tracking-[.12em] text-mist uppercase">
+              {focused ? APPS[focused.id].title : "Earvin Gallardo Bravo"}
             </span>
+            <div className="ml-auto flex items-center gap-2 sm:gap-3 min-w-0">
+              <button
+                onClick={toggle}
+                aria-label={playing ? "Pause" : "Play Unify34"}
+                className="w-7 h-7 grid place-items-center rounded-full bg-mango text-night shrink-0"
+              >
+                {playing ? <Pause size={12} /> : <Play size={12} />}
+              </button>
+              <button
+                onClick={() => open("music")}
+                className="min-w-0 text-left hover:text-gold2"
+              >
+                <span className="block truncate max-w-[34vw] sm:max-w-[260px] font-mono text-[11px] tracking-[.1em] uppercase">
+                  <span className="font-medium">{SONGS[idx].n}</span>
+                  <span className="text-mist normal-case"> by {SONGS[idx].a}</span>
+                </span>
+              </button>
+              <button
+                onClick={next}
+                aria-label="Next track"
+                className="hidden sm:grid w-7 h-7 place-items-center rounded-full hover:bg-white/10 shrink-0"
+              >
+                <SkipForward size={12} />
+              </button>
+              <span className="font-mono text-[11px] text-mist tabular-nums pl-1 sm:pl-3 shrink-0">
+                {now ? hhmm(now).toUpperCase() : ""}
+              </span>
+            </div>
           </div>
-        </div>)}
+        )}
 
         {/* desktop: name and app icons */}
         {powered && (
           <>
-            <div className="absolute left-6 sm:left-10 bottom-32 sm:bottom-36 z-0 pointer-events-none">
-              <p className="font-display font-bold tracking-[-0.04em] leading-[.86] text-[clamp(44px,7vw,110px)] text-bone/95">
-                Earvin
-                <br />
-                Gallardo
-              </p>
-              <p className="mt-3 text-mist text-lg">
-                Music artist, developer and founder.
+            <div className="absolute left-4 sm:left-10 bottom-8 sm:bottom-[132px] z-0 pointer-events-none">
+              <Flaps
+                word="EARVIN"
+                delay={500}
+                className="gap-1.5"
+                flapClass="w-[clamp(30px,4vw,54px)] h-[clamp(42px,5.4vw,72px)] text-[clamp(24px,3.4vw,46px)]"
+              />
+              <p className="font-mono text-[11px] tracking-[.2em] text-mist mt-2">
+                MUSIC ARTIST · DEVELOPER · FOUNDER
               </p>
             </div>
             <nav
               aria-label="Apps"
               className="sm:hidden absolute z-10 top-16 left-4 right-4 grid grid-cols-4 gap-x-3 gap-y-4"
             >
-              {Object.entries(APPS).map(([k, a]) => (
+              {tiles.map(([k, a]) => (
                 <button
                   key={k}
                   onClick={() => open(k)}
-                  className="flex flex-col items-center gap-1.5 text-xs text-bone/90 group"
+                  className="flex flex-col items-center gap-1.5 font-mono text-[10px] tracking-[.06em] uppercase text-bone/90"
                 >
-                  <span
-                    className={`w-14 h-14 rounded-2xl grid place-items-center shadow-lg transition-transform group-hover:-translate-y-0.5 ${a.tile}`}
-                  >
+                  <span className={`relative w-14 h-14 grid place-items-center border ${a.tile}`}>
                     {a.icon}
+                    {a.isNew && (
+                      <span className="absolute -top-[7px] -right-1.5 font-mono font-bold text-[8px] tracking-[.1em] bg-bone text-night px-1">
+                        NEW
+                      </span>
+                    )}
                   </span>
                   {a.title}
                 </button>
@@ -504,32 +621,44 @@ export default function Page() {
 
         {/* dock */}
         {powered && !mobile && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[60] bar rounded-[26px] border border-white/10 px-2.5 py-2.5 flex gap-2.5">
-            {Object.entries(APPS).map(([k, a]) => (
-              <motion.button
-                key={k}
-                whileHover={{ y: -10, scale: 1.12 }}
-                transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                onClick={() => open(k)}
-                title={a.title}
-                className="relative"
-              >
-                <span
-                  className={`w-14 h-14 rounded-2xl grid place-items-center ${a.tile}`}
+          <nav
+            aria-label="Dock"
+            className="absolute bottom-[18px] left-1/2 -translate-x-1/2 z-[60] flex gap-2 p-[9px] bg-[#131210]/80 border border-white/10 backdrop-blur-md max-w-[calc(100vw-24px)]"
+          >
+            {tiles.map(([k, a]) => (
+              <span key={k} className="flex gap-2">
+                {a.gap && <span className="w-px bg-white/[.18] my-1 mx-0.5" aria-hidden />}
+                <motion.button
+                  whileHover={{ y: -6 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                  onClick={() => open(k)}
+                  className="group relative"
+                  aria-label={a.title}
                 >
-                  {a.icon}
-                </span>
-                {wins.find((x) => x.id === k) && (
-                  <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-mango" />
-                )}
-              </motion.button>
+                  <span className={`w-[54px] h-[54px] grid place-items-center border hover:border-gold2 ${a.tile}`}>
+                    {a.icon}
+                  </span>
+                  {a.isNew && (
+                    <span className="absolute -top-[7px] -right-1.5 font-mono font-bold text-[8px] tracking-[.1em] bg-bone text-night px-1">
+                      NEW
+                    </span>
+                  )}
+                  <span className="absolute bottom-16 left-1/2 -translate-x-1/2 label text-[10px] whitespace-nowrap bg-night border border-white/[.18] px-2 py-1 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
+                    {a.title}
+                  </span>
+                  {wins.find((x) => x.id === k) && (
+                    <span className="absolute -bottom-[6px] left-1/2 -translate-x-1/2 w-1 h-1 bg-gold2" />
+                  )}
+                </motion.button>
+              </span>
             ))}
-          </div>
+          </nav>
         )}
 
         <AnimatePresence>
-          {!powered && <PowerOn now={now} onPower={power} />}
+          {!powered && <Boot now={now} onPower={power} replay={() => setTv(true)} />}
         </AnimatePresence>
+        {tv && <TvSplash onDone={() => setTv(false)} />}
       </main>
     </Player.Provider>
   );

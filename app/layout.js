@@ -1,10 +1,16 @@
 import "./globals.css";
-import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
+import { Archivo, Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import { LINKS } from "./data";
 
-const display = Bricolage_Grotesque({
+const display = Archivo({
   subsets: ["latin"],
+  axes: ["wdth"],
   variable: "--font-display",
+  display: "swap",
+});
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
   display: "swap",
 });
 const body = Instrument_Sans({
@@ -39,7 +45,7 @@ export const metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#160B26",
+  themeColor: "#0A0908",
 };
 
 // schema.org Person, so search engines can show a proper profile result.
@@ -62,7 +68,7 @@ const PERSON = {
 
 export default function L({ children }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
+    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body className="font-sans antialiased">
         <script
           type="application/ld+json"

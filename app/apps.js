@@ -648,7 +648,7 @@ export function Notes() {
       <h2 className="font-display text-4xl font-bold tracking-tight">Leave a note</h2>
       <p className="text-mist mt-2">Say hi, ask a question, or tell me what you'd build. Notes are public and dated.</p>
 
-      <div className="mt-6 rounded-2xl bg-[#F6D27A] text-night p-5 shadow-xl">
+      <div className="mt-6 bg-mango text-night p-5 shadow-xl">
         {wallet === undefined ? (
           <p className="text-sm">Checking your sign-in…</p>
         ) : !wallet ? (

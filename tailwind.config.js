@@ -1,19 +1,21 @@
-/** Design tokens: Guerrero night, Monad violet, orchard mango. */
+/** Design tokens: black, bone and gold (the claudia.gallery look, with Earvin as the character). */
 module.exports = {
   content: ["./app/**/*.{js,jsx}"],
   theme: {
     extend: {
       colors: {
-        night: "#160B26", // Guerrero night sky: the base
-        plum: "#2A1840", // raised surfaces
-        violet: "#836EF9", // Monad
-        mango: "#F2A541", // orchard fruit: the one warm accent
-        bone: "#F3ECE2", // primary text
-        mist: "#B9A9CF", // secondary text
+        night: "#0A0908", // ink: the base
+        plum: "#1A1815", // raised surfaces
+        violet: "#B8862E", // deep gold: secondary accent
+        mango: "#D9A441", // gold: the one accent
+        gold2: "#F0C76A", // light gold for text on dark
+        bone: "#F2ECE1", // primary text
+        mist: "#A39C90", // secondary text
       },
       fontFamily: {
         display: ["var(--font-display)", "system-ui", "sans-serif"],
         sans: ["var(--font-body)", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
     },
   },
