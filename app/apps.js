@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import { ArrowUpRight, BadgeCheck, Pause, Play } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, Fingerprint, Pause, Play, Wallet } from "lucide-react";
+import { explainWalletError, walletSignIn } from "./wallet";
 import {
   CERTS,
   EDUCATION,
@@ -553,77 +554,75 @@ export function Updates() {
   );
 }
 
-/* ---------- Notes (guestbook) ---------- */
+/* ---------- Notes (guestbook, signed with a wallet) ---------- */
 
 const fmtDay = (iso) => new Date(iso.replace(" ", "T") + (iso.endsWith("Z") ? "" : "Z")).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
-const store = {
-  get: () => {
-    try {
-      return localStorage.getItem("notes.who") || "";
-    } catch {
-      return "";
-    }
-  },
-  set: (v) => {
-    try {
-      localStorage.setItem("notes.who", v);
-    } catch {}
-  },
-};
+const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+
+// A small gold 3x3 pattern from the address, so wallets look distinct without a photo.
+function WalletMark({ address, size = 24 }) {
+  let h = 0;
+  for (const c of address.toLowerCase()) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return (
+    <svg width={size} height={size} viewBox="0 0 12 12" className="rounded shrink-0" aria-hidden>
+      {Array.from({ length: 9 }, (_, i) => (
+        <rect key={i} x={(i % 3) * 4} y={Math.floor(i / 3) * 4} width="4" height="4" fill={(h >> i) & 1 ? "#F4A63A" : "#2B2340"} />
+      ))}
+    </svg>
+  );
+}
 
 export function Notes() {
   const [list, setList] = useState(null);
-  const [me, setMe] = useState(null); // signed in with X: { username, name, avatar }
-  const [xEnabled, setXEnabled] = useState(false);
-  const [guest, setGuest] = useState("");
-  const [named, setNamed] = useState(false);
+  const [wallet, setWallet] = useState(undefined); // undefined = loading, null = signed out, { address, name }
+  const [editing, setEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
   const [body, setBody] = useState("");
   const [hp, setHp] = useState("");
   const [state, setState] = useState({ busy: false, msg: "", ok: false });
 
   useEffect(() => {
-    const w = store.get();
-    if (w && !w.startsWith("@")) {
-      setGuest(w);
-      setNamed(true);
-    }
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (!j) return;
-        setXEnabled(j.xEnabled);
-        setMe(j.user);
-      })
-      .catch(() => {});
+      .then((j) => setWallet(j?.wallet ?? null))
+      .catch(() => setWallet(null));
     fetch("/api/notes")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((j) => setList(j.notes))
       .catch(() => setList([]));
-    const q = new URLSearchParams(location.search);
-    const a = q.get("auth");
-    if (a) {
-      const msg = { cancelled: "Sign-in with X was cancelled.", expired: "Sign-in timed out. Try again.", failed: "X didn't confirm your account. Try again." }[a];
-      if (msg) setState({ busy: false, msg, ok: false });
-      q.delete("auth");
-      history.replaceState(null, "", `${location.pathname}${q.toString() ? `?${q}` : ""}`);
-    }
   }, []);
 
-  const confirmName = (e) => {
-    e.preventDefault();
-    const w = guest.trim();
-    if (!w) return setState({ busy: false, msg: "Add your name to continue as a guest.", ok: false });
-    if (w.startsWith("@")) return setState({ busy: false, msg: "To post as an @handle, sign in with X. Otherwise use your name.", ok: false });
-    store.set(w);
-    setGuest(w);
-    setNamed(true);
-    setState({ busy: false, msg: "", ok: false });
+  const signIn = async (create) => {
+    setState({ busy: true, msg: "", ok: false });
+    try {
+      const w = await walletSignIn({ create });
+      setWallet(w);
+      setEditing(!w.name); // first time here: offer a name
+      setNameDraft(w.name || "");
+      setState({ busy: false, msg: "", ok: false });
+    } catch (e) {
+      setState({ busy: false, msg: explainWalletError(e), ok: false });
+    }
   };
 
   const signOut = async () => {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
-    setMe(null);
-    setState({ busy: false, msg: "Signed out of X on this site.", ok: true });
+    setWallet(null);
+    setEditing(false);
+    setState({ busy: false, msg: "Signed out on this site.", ok: true });
+  };
+
+  const saveName = async (e) => {
+    e.preventDefault();
+    setState({ busy: true, msg: "", ok: false });
+    const r = await fetch("/api/auth/wallet/name", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: nameDraft }) }).catch(() => null);
+    const j = await r?.json().catch(() => ({}));
+    if (!r?.ok) return setState({ busy: false, msg: j?.error || "The name didn't save. Try again.", ok: false });
+    setWallet(j.wallet);
+    setEditing(false);
+    // Notes show the current name, so update the ones already on screen.
+    setList((l) => l?.map((n) => (n.wallet === j.wallet.address ? { ...n, who: j.wallet.name } : n)));
+    setState({ busy: false, msg: "", ok: false });
   };
 
   const send = async (e) => {
@@ -631,8 +630,9 @@ export function Notes() {
     if (!body.trim()) return setState({ busy: false, msg: "Write something before leaving a note.", ok: false });
     setState({ busy: true, msg: "", ok: false });
     try {
-      const r = await fetch("/api/notes", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ who: me ? "" : guest, body, website: hp }) });
+      const r = await fetch("/api/notes", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ body, website: hp }) });
       const j = await r.json().catch(() => ({}));
+      if (r.status === 401) setWallet(null);
       if (!r.ok) return setState({ busy: false, msg: j.error || "The note didn't save. Try again.", ok: false });
       if (j.note) setList((l) => [j.note, ...(l || [])]);
       setBody("");
@@ -642,57 +642,62 @@ export function Notes() {
     }
   };
 
-  const ready = me || named;
+  const btn = "inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold disabled:opacity-60";
   return (
     <div className="max-w-3xl">
       <h2 className="font-display text-4xl font-bold tracking-tight">Leave a note</h2>
       <p className="text-mist mt-2">Say hi, ask a question, or tell me what you'd build. Notes are public and dated.</p>
 
       <div className="mt-6 rounded-2xl bg-[#F6D27A] text-night p-5 shadow-xl">
-        {!ready ? (
+        {wallet === undefined ? (
+          <p className="text-sm">Checking your sign-in…</p>
+        ) : !wallet ? (
           <div>
-            <p className="font-display text-lg font-semibold">First, who's writing?</p>
-            {xEnabled && (
-              <>
-                <a href="/api/auth/x/login" className="mt-3 inline-flex items-center gap-2 rounded-xl bg-night text-bone px-5 py-3 font-semibold hover:bg-plum">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                    <path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.97 6.82H1.67l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23Zm-1.16 17.52h1.83L7.08 4.13H5.12l11.96 15.64Z" />
-                  </svg>
-                  Sign in with X
-                </a>
-                <p className="text-sm text-night/70 mt-2">Your note shows your @handle with a verified tick. We only read your public profile.</p>
-              </>
-            )}
-            <form onSubmit={confirmName} className={xEnabled ? "mt-5 pt-4 border-t border-night/15" : "mt-3"}>
-              <label htmlFor="who" className="text-sm font-semibold block">
-                {xEnabled ? "Or continue as a guest" : "Your name"}
-              </label>
-              <div className="mt-2 flex gap-2">
-                <input id="who" value={guest} onChange={(e) => setGuest(e.target.value)} maxLength={40} autoComplete="name" placeholder="Your name" className="flex-1 min-w-0 rounded-xl bg-white/70 px-4 py-2.5 placeholder:text-night/40 outline-none focus:ring-2 focus:ring-night" />
-                <button className="rounded-xl bg-white/80 hover:bg-white px-5 font-semibold">Continue</button>
-              </div>
-            </form>
+            <p className="font-display text-lg font-semibold">Sign in with your wallet to leave a note</p>
+            <p className="text-sm text-night/75 mt-1">
+              A Mera passkey wallet: one Face ID or fingerprint, nothing to install. Signing in is free and moves no money.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" disabled={state.busy} onClick={() => signIn(false)} className={`${btn} bg-night text-bone hover:bg-plum`}>
+                <Fingerprint size={18} aria-hidden />
+                {state.busy ? "Waiting for your passkey…" : "Sign in with Mera"}
+              </button>
+              <button type="button" disabled={state.busy} onClick={() => signIn(true)} className={`${btn} bg-white/80 hover:bg-white`}>
+                <Wallet size={18} aria-hidden />
+                Create a wallet
+              </button>
+            </div>
+            <p className="text-xs text-night/60 mt-3">First time here? Create a wallet. It lives in your device's passkeys, so use the same device or synced passkeys to sign in again.</p>
           </div>
+        ) : editing ? (
+          <form onSubmit={saveName}>
+            <p className="text-sm flex items-center gap-2">
+              <WalletMark address={wallet.address} /> Signed in as <b className="font-mono">{short(wallet.address)}</b>
+            </p>
+            <label htmlFor="wname" className="font-display text-lg font-semibold block mt-3">
+              Add a name to your wallet <span className="text-sm font-normal text-night/60">(optional)</span>
+            </label>
+            <div className="mt-2 flex gap-2">
+              <input id="wname" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} maxLength={40} autoComplete="nickname" placeholder="Your name" className="flex-1 min-w-0 rounded-xl bg-white/70 px-4 py-2.5 placeholder:text-night/40 outline-none focus:ring-2 focus:ring-night" />
+              <button disabled={state.busy} className="rounded-xl bg-night text-bone px-5 font-semibold disabled:opacity-60">Save</button>
+              <button type="button" onClick={() => setEditing(false)} className="rounded-xl bg-white/70 hover:bg-white px-4 font-semibold">
+                Skip
+              </button>
+            </div>
+            <p className="text-xs text-night/60 mt-2">Shown on your notes next to your wallet address. Change it any time.</p>
+          </form>
         ) : (
           <form onSubmit={send}>
             <p className="text-sm flex items-center gap-2 flex-wrap">
-              {me ? (
-                <>
-                  {me.avatar && <img src={me.avatar} alt="" className="w-6 h-6 rounded-full" />}
-                  Signed in as <b>@{me.username}</b>
-                  <BadgeCheck size={16} className="text-[#1D6FD8]" aria-label="Verified with X" />
-                  <button type="button" onClick={signOut} className="underline underline-offset-2 text-night/70 hover:text-night">
-                    sign out
-                  </button>
-                </>
-              ) : (
-                <>
-                  Leaving a note as <b>{guest}</b> (guest)
-                  <button type="button" onClick={() => setNamed(false)} className="underline underline-offset-2 text-night/70 hover:text-night">
-                    change
-                  </button>
-                </>
-              )}
+              <WalletMark address={wallet.address} />
+              Leaving a note as {wallet.name ? <b>{wallet.name}</b> : null}
+              <span className="font-mono text-night/70">{short(wallet.address)}</span>
+              <button type="button" onClick={() => { setNameDraft(wallet.name || ""); setEditing(true); }} className="underline underline-offset-2 text-night/70 hover:text-night">
+                {wallet.name ? "change name" : "add a name"}
+              </button>
+              <button type="button" onClick={signOut} className="underline underline-offset-2 text-night/70 hover:text-night">
+                sign out
+              </button>
             </p>
             <label htmlFor="body" className="sr-only">
               Your note
@@ -722,7 +727,14 @@ export function Notes() {
         {list?.map((n) => (
           <li key={n.id} className="rounded-2xl bg-white/[.04] border border-white/5 p-4">
             <div className="flex items-center gap-2 min-w-0">
-              {n.verified ? (
+              {n.wallet ? (
+                <>
+                  <WalletMark address={n.wallet} size={22} />
+                  {n.who && <span className="font-semibold truncate">{n.who}</span>}
+                  <span className={`font-mono text-[11px] shrink-0 ${n.who ? "text-mist" : "font-semibold text-bone"}`}>{short(n.wallet)}</span>
+                  <Wallet size={13} className="text-mango shrink-0" aria-label="Signed with a wallet" />
+                </>
+              ) : n.verified ? (
                 <>
                   {n.avatar && <img src={n.avatar} alt="" loading="lazy" className="w-6 h-6 rounded-full shrink-0" />}
                   <a href={`https://x.com/${n.who.slice(1)}`} target="_blank" rel="noopener nofollow ugc" className="font-semibold hover:text-mango truncate">

@@ -1,3 +1,4 @@
+import { getAddress, isAddress, verifyMessage } from "viem";
 // Cloudflare Worker for earvingallardo.com.
 // Serves the static Next.js export (ASSETS binding) and /api/github, which reads the
 // public GitHub contribution calendar + recently pushed public repos. No token needed;
@@ -203,8 +204,12 @@ async function ipHash(request, env) {
 
 async function notes(request, env) {
   if (request.method === "GET") {
+    // Wallet notes show the wallet's CURRENT name (or nothing, and the UI shows the short address).
     const { results } = await env.DB.prepare(
-      "SELECT id, who, body, created_at, verified, avatar FROM notes WHERE hidden = 0 ORDER BY id DESC LIMIT 100",
+      `SELECT n.id, CASE WHEN n.wallet IS NOT NULL THEN COALESCE(w.name, '') ELSE n.who END AS who,
+              n.body, n.created_at, n.verified, n.avatar, n.wallet
+         FROM notes n LEFT JOIN wallet_names w ON w.address = n.wallet
+        WHERE n.hidden = 0 ORDER BY n.id DESC LIMIT 100`,
     ).all();
     return json({ notes: results });
   }
@@ -218,59 +223,154 @@ async function notes(request, env) {
     return json({ error: "Send the note as JSON." }, 400);
   }
   if (d.website) return json({ ok: true }); // honeypot: bots fill hidden fields; drop silently
-  const clean = (v) =>
-    String(v ?? "")
-      .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "")
-      .trim();
-  // Signed in with X: the handle comes from X, not from the form. Guests can't use @handles.
-  const sess = xReady(env) ? await session(request, env) : null;
-  const who = sess ? `@${sess.username}` : clean(d.who).replace(/\s+/g, " ");
-  if (!sess && who.startsWith("@"))
-    return json(
-      {
-        error:
-          "To post as an @handle, sign in with X. Otherwise use your name.",
-      },
-      400,
-    );
+  // New notes need a signed-in wallet. The author is the wallet; its name lives in wallet_names.
+  const w = await walletSession(request, env);
+  if (!w)
+    return json({ error: "Sign in with your wallet to leave a note." }, 401);
   const body = clean(d.body).replace(/\n{3,}/g, "\n\n");
-  if (!who)
-    return json(
-      { error: "Add your name or X handle before leaving a note." },
-      400,
-    );
-  if (who.length > 40)
-    return json(
-      { error: "Keep your name or handle under 40 characters." },
-      400,
-    );
   if (!body)
     return json({ error: "Write something before leaving a note." }, 400);
   if (body.length > 500)
     return json({ error: "Keep the note under 500 characters." }, 400);
-  if (/https?:\/\/|www\./i.test(body + who))
+  if (/https?:\/\/|www\./i.test(body))
     return json({ error: "Links aren't allowed in notes." }, 400);
 
   const ip = await ipHash(request, env);
-  const recent = await env.DB.prepare(
-    "SELECT SUM(created_at > strftime('%Y-%m-%dT%H:%M:%SZ','now','-60 seconds')) AS minute, COUNT(*) AS day FROM notes WHERE ip_hash = ? AND created_at > strftime('%Y-%m-%dT%H:%M:%SZ','now','-1 day')",
-  )
-    .bind(ip)
-    .first();
-  if ((recent?.minute ?? 0) > 0)
-    return json(
-      { error: "You just left a note. Wait a minute before leaving another." },
-      429,
-    );
-  if ((recent?.day ?? 0) >= 10)
-    return json({ error: "That's 10 notes today. Come back tomorrow." }, 429);
+  const since = "created_at > strftime('%Y-%m-%dT%H:%M:%SZ','now','-1 day')";
+  const minute =
+    "SUM(created_at > strftime('%Y-%m-%dT%H:%M:%SZ','now','-60 seconds'))";
+  for (const [col, val] of [
+    ["ip_hash", ip],
+    ["wallet", w.address],
+  ]) {
+    const r = await env.DB.prepare(
+      `SELECT ${minute} AS minute, COUNT(*) AS day FROM notes WHERE ${col} = ? AND ${since}`,
+    )
+      .bind(val)
+      .first();
+    if ((r?.minute ?? 0) > 0)
+      return json(
+        {
+          error: "You just left a note. Wait a minute before leaving another.",
+        },
+        429,
+      );
+    if ((r?.day ?? 0) >= 10)
+      return json({ error: "That's 10 notes today. Come back tomorrow." }, 429);
+  }
 
+  const name =
+    (
+      await env.DB.prepare("SELECT name FROM wallet_names WHERE address = ?")
+        .bind(w.address)
+        .first()
+    )?.name || "";
   const row = await env.DB.prepare(
-    "INSERT INTO notes (who, body, ip_hash, verified, x_id, avatar) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, who, body, created_at, verified, avatar",
+    "INSERT INTO notes (who, body, ip_hash, verified, wallet) VALUES (?, ?, ?, 0, ?) RETURNING id, who, body, created_at, verified, avatar, wallet",
   )
-    .bind(who, body, ip, sess ? 1 : 0, sess?.id ?? null, sess?.avatar ?? null)
+    .bind(name, body, ip, w.address)
     .first();
   return json({ note: row }, 201);
+}
+
+const clean = (v) =>
+  String(v ?? "")
+    .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "")
+    .trim();
+
+// ---------- Sign in with a wallet (Mera passkey wallet; any EOA that can sign a message works) ----------
+// GET  /api/auth/wallet/challenge?address=0x..   -> { message, token }  token = sealed {address, nonce, iat}, 5 min
+// POST /api/auth/wallet/verify { token, signature } -> checks the EIP-191 signature, burns the nonce, sets eg_w (30 days)
+// POST /api/auth/wallet/name { name }            -> sets (or with "" clears) the wallet's display name
+// The server never sees a key: it only checks a signature over a message it issued itself.
+const signInMessage = (address, nonce, iat) =>
+  "earvingallardo.com wants you to sign in with your wallet.\n\n" +
+  "This proves you own this wallet so you can leave notes. It costs nothing and moves nothing.\n\n" +
+  `Address: ${address}\nNonce: ${nonce}\nIssued At: ${new Date(iat).toISOString()}`;
+
+async function walletSession(req, env) {
+  const s = await unseal(env, cookie(req, "eg_w"));
+  return s?.address ? s : null;
+}
+
+async function walletAuth(request, env, url) {
+  if (url.pathname === "/api/auth/wallet/challenge") {
+    const raw = url.searchParams.get("address") || "";
+    if (!isAddress(raw))
+      return json({ error: "That isn't a wallet address." }, 400);
+    const address = getAddress(raw);
+    const nonce = rand(16);
+    const iat = Date.now();
+    const token = await seal(env, {
+      address,
+      nonce,
+      iat,
+      exp: iat + 5 * 60 * 1000,
+    });
+    return json({ message: signInMessage(address, nonce, iat), token });
+  }
+  if (url.pathname === "/api/auth/wallet/verify" && request.method === "POST") {
+    const d = await request.json().catch(() => ({}));
+    const t = await unseal(env, d.token);
+    if (!t?.address || !t.nonce)
+      return json({ error: "Sign-in expired. Try again." }, 400);
+    const ok = await verifyMessage({
+      address: t.address,
+      message: signInMessage(t.address, t.nonce, t.iat),
+      signature: d.signature,
+    }).catch(() => false);
+    if (!ok)
+      return json({ error: "That signature doesn't match the wallet." }, 401);
+    const used = await env.DB.prepare(
+      "INSERT INTO wallet_nonces (nonce) VALUES (?) ON CONFLICT(nonce) DO NOTHING RETURNING nonce",
+    )
+      .bind(t.nonce)
+      .first();
+    if (!used)
+      return json({ error: "That sign-in was already used. Try again." }, 400);
+    const name =
+      (
+        await env.DB.prepare("SELECT name FROM wallet_names WHERE address = ?")
+          .bind(t.address)
+          .first()
+      )?.name || "";
+    const sess = await seal(env, {
+      address: t.address,
+      exp: Date.now() + 30 * 24 * 3600 * 1000,
+    });
+    return new Response(
+      JSON.stringify({ wallet: { address: t.address, name } }),
+      {
+        headers: {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+          "set-cookie": setCookie("eg_w", sess, 30 * 24 * 3600),
+        },
+      },
+    );
+  }
+  if (url.pathname === "/api/auth/wallet/name" && request.method === "POST") {
+    const w = await walletSession(request, env);
+    if (!w) return json({ error: "Sign in with your wallet first." }, 401);
+    const d = await request.json().catch(() => ({}));
+    const name = clean(d.name).replace(/\s+/g, " ");
+    if (name.length > 40)
+      return json({ error: "Keep your name under 40 characters." }, 400);
+    if (/https?:\/\/|www\.|@/i.test(name))
+      return json({ error: "Names can't contain links or @handles." }, 400);
+    if (!name)
+      await env.DB.prepare("DELETE FROM wallet_names WHERE address = ?")
+        .bind(w.address)
+        .run();
+    else
+      await env.DB.prepare(
+        "INSERT INTO wallet_names (address, name) VALUES (?, ?) ON CONFLICT(address) DO UPDATE SET name = excluded.name, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')",
+      )
+        .bind(w.address, name)
+        .run();
+    return json({ wallet: { address: w.address, name } });
+  }
+  return json({ error: "Not found." }, 404);
 }
 
 // ---------- Sign in with X (OAuth 2.0 authorization code + PKCE, confidential client) ----------
@@ -329,18 +429,29 @@ async function auth(request, env, url) {
   const callback = `${url.origin}/api/auth/x/callback`;
   if (url.pathname === "/api/auth/me") {
     const s = xReady(env) ? await session(request, env) : null;
+    const w = await walletSession(request, env);
+    const name = w
+      ? (
+          await env.DB.prepare(
+            "SELECT name FROM wallet_names WHERE address = ?",
+          )
+            .bind(w.address)
+            .first()
+        )?.name || ""
+      : "";
     return json({
       xEnabled: xReady(env),
       user: s ? { username: s.username, name: s.name, avatar: s.avatar } : null,
+      wallet: w ? { address: w.address, name } : null,
     });
   }
+  if (url.pathname.startsWith("/api/auth/wallet/"))
+    return walletAuth(request, env, url);
   if (url.pathname === "/api/auth/logout" && request.method === "POST") {
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: {
-        "content-type": "application/json",
-        "set-cookie": setCookie("eg_x", "", 0),
-      },
-    });
+    const h = new Headers({ "content-type": "application/json" });
+    h.append("set-cookie", setCookie("eg_x", "", 0));
+    h.append("set-cookie", setCookie("eg_w", "", 0));
+    return new Response(JSON.stringify({ ok: true }), { headers: h });
   }
   if (!xReady(env))
     return json({ error: "Sign in with X isn't set up yet." }, 503);
