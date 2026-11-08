@@ -95,7 +95,6 @@ async function github(ctx) {
   return res;
 }
 
-
 // Latest @EmpowerTours posts from X's public syndication feed (what X's own embed uses).
 // Edge-cached for an hour; on any failure the client falls back to X's official embed.
 async function xfeed(ctx) {
@@ -104,9 +103,12 @@ async function xfeed(ctx) {
   const staleKey = new Request("https://cache.internal/api/x/stale-v2");
   const hit = await cache.match(key);
   if (hit) return hit;
-  const r = await fetch("https://syndication.twitter.com/srv/timeline-profile/screen-name/EmpowerTours", {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; earvingallardo.com)" },
-  });
+  const r = await fetch(
+    "https://syndication.twitter.com/srv/timeline-profile/screen-name/EmpowerTours",
+    {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; earvingallardo.com)" },
+    },
+  );
   if (!r.ok) {
     // X rate-limits this feed often; serve the last good copy (kept up to 7 days) if we have one.
     const stale = await cache.match(staleKey);
@@ -114,12 +116,18 @@ async function xfeed(ctx) {
     throw new Error(`x ${r.status}`);
   }
   const html = await r.text();
-  const m = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+  const m = html.match(
+    /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/,
+  );
   if (!m) throw new Error("x: no data");
   const entries = JSON.parse(m[1])?.props?.pageProps?.timeline?.entries ?? [];
   const tweets = entries.map((e) => e?.content?.tweet).filter(Boolean);
   if (!tweets.length) throw new Error("x: empty");
-  const u = tweets.find((t) => t.user?.screen_name?.toLowerCase() === "empowertours")?.user ?? tweets[0].user ?? {};
+  const u =
+    tweets.find((t) => t.user?.screen_name?.toLowerCase() === "empowertours")
+      ?.user ??
+    tweets[0].user ??
+    {};
   const strip = (t) =>
     (t.full_text || t.text || "").replace(/https:\/\/t\.co\/\w+$/, "").trim();
   const body = {
@@ -127,7 +135,9 @@ async function xfeed(ctx) {
       name: u.name,
       bio: u.description,
       followers: u.followers_count ?? null,
-      avatar: (u.profile_image_url_https || "").replace("_normal", "_400x400") || null,
+      avatar:
+        (u.profile_image_url_https || "").replace("_normal", "_400x400") ||
+        null,
     },
     // Only original posts by @EmpowerTours: no reposts, no replies, no posts by other accounts.
     posts: tweets
@@ -146,28 +156,49 @@ async function xfeed(ctx) {
         date: t.created_at,
         likes: t.favorite_count || 0,
         reposts: t.retweet_count || 0,
-        image: t.entities?.media?.[0]?.media_url_https || t.extended_entities?.media?.[0]?.media_url_https || null,
+        image:
+          t.entities?.media?.[0]?.media_url_https ||
+          t.extended_entities?.media?.[0]?.media_url_https ||
+          null,
       })),
   };
   const res = new Response(JSON.stringify(body), {
-    headers: { "content-type": "application/json", "cache-control": `public, max-age=${TTL}` },
+    headers: {
+      "content-type": "application/json",
+      "cache-control": `public, max-age=${TTL}`,
+    },
   });
   const stale = new Response(JSON.stringify(body), {
-    headers: { "content-type": "application/json", "cache-control": "public, max-age=604800" },
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "public, max-age=604800",
+    },
   });
-  ctx.waitUntil(Promise.all([cache.put(key, res.clone()), cache.put(staleKey, stale)]));
+  ctx.waitUntil(
+    Promise.all([cache.put(key, res.clone()), cache.put(staleKey, stale)]),
+  );
   return res;
 }
 
-
 // Guestbook notes (D1). Public read; public write with validation and per-visitor rate limits.
 const json = (body, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+    },
+  });
 
 async function ipHash(request, env) {
   const ip = request.headers.get("cf-connecting-ip") || "unknown";
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${env.NOTES_SALT}|${ip}`));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const buf = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${env.NOTES_SALT}|${ip}`),
+  );
+  return [...new Uint8Array(buf)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 async function notes(request, env) {
@@ -177,7 +208,8 @@ async function notes(request, env) {
     ).all();
     return json({ notes: results });
   }
-  if (request.method !== "POST") return json({ error: "Use GET or POST." }, 405);
+  if (request.method !== "POST")
+    return json({ error: "Use GET or POST." }, 405);
 
   let d;
   try {
@@ -186,17 +218,38 @@ async function notes(request, env) {
     return json({ error: "Send the note as JSON." }, 400);
   }
   if (d.website) return json({ ok: true }); // honeypot: bots fill hidden fields; drop silently
-  const clean = (v) => String(v ?? "").replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "").trim();
+  const clean = (v) =>
+    String(v ?? "")
+      .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "")
+      .trim();
   // Signed in with X: the handle comes from X, not from the form. Guests can't use @handles.
   const sess = xReady(env) ? await session(request, env) : null;
   const who = sess ? `@${sess.username}` : clean(d.who).replace(/\s+/g, " ");
-  if (!sess && who.startsWith("@")) return json({ error: "To post as an @handle, sign in with X. Otherwise use your name." }, 400);
+  if (!sess && who.startsWith("@"))
+    return json(
+      {
+        error:
+          "To post as an @handle, sign in with X. Otherwise use your name.",
+      },
+      400,
+    );
   const body = clean(d.body).replace(/\n{3,}/g, "\n\n");
-  if (!who) return json({ error: "Add your name or X handle before leaving a note." }, 400);
-  if (who.length > 40) return json({ error: "Keep your name or handle under 40 characters." }, 400);
-  if (!body) return json({ error: "Write something before leaving a note." }, 400);
-  if (body.length > 500) return json({ error: "Keep the note under 500 characters." }, 400);
-  if (/https?:\/\/|www\./i.test(body + who)) return json({ error: "Links aren't allowed in notes." }, 400);
+  if (!who)
+    return json(
+      { error: "Add your name or X handle before leaving a note." },
+      400,
+    );
+  if (who.length > 40)
+    return json(
+      { error: "Keep your name or handle under 40 characters." },
+      400,
+    );
+  if (!body)
+    return json({ error: "Write something before leaving a note." }, 400);
+  if (body.length > 500)
+    return json({ error: "Keep the note under 500 characters." }, 400);
+  if (/https?:\/\/|www\./i.test(body + who))
+    return json({ error: "Links aren't allowed in notes." }, 400);
 
   const ip = await ipHash(request, env);
   const recent = await env.DB.prepare(
@@ -204,8 +257,13 @@ async function notes(request, env) {
   )
     .bind(ip)
     .first();
-  if ((recent?.minute ?? 0) > 0) return json({ error: "You just left a note. Wait a minute before leaving another." }, 429);
-  if ((recent?.day ?? 0) >= 10) return json({ error: "That's 10 notes today. Come back tomorrow." }, 429);
+  if ((recent?.minute ?? 0) > 0)
+    return json(
+      { error: "You just left a note. Wait a minute before leaving another." },
+      429,
+    );
+  if ((recent?.day ?? 0) >= 10)
+    return json({ error: "That's 10 notes today. Come back tomorrow." }, 429);
 
   const row = await env.DB.prepare(
     "INSERT INTO notes (who, body, ip_hash, verified, x_id, avatar) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, who, body, created_at, verified, avatar",
@@ -215,15 +273,24 @@ async function notes(request, env) {
   return json({ note: row }, 201);
 }
 
-
 // ---------- Sign in with X (OAuth 2.0 authorization code + PKCE, confidential client) ----------
 // Needs X_CLIENT_ID (var) and X_CLIENT_SECRET (secret). Without them the button is hidden and
 // notes work in guest mode only. Sessions are HMAC-signed cookies; no X tokens are stored.
 const enc = new TextEncoder();
-const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64url = (buf) =>
+  btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 const rand = (n = 32) => b64url(crypto.getRandomValues(new Uint8Array(n)));
 async function hmac(env, data) {
-  const key = await crypto.subtle.importKey("raw", enc.encode(env.SESSION_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(env.SESSION_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
   return b64url(await crypto.subtle.sign("HMAC", key, enc.encode(data)));
 }
 async function seal(env, obj) {
@@ -235,32 +302,55 @@ async function unseal(env, token) {
   const [data, sig] = token.split(".");
   if ((await hmac(env, data)) !== sig) return null;
   try {
-    const obj = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(data.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0))));
+    const obj = JSON.parse(
+      new TextDecoder().decode(
+        Uint8Array.from(atob(data.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
+          c.charCodeAt(0),
+        ),
+      ),
+    );
     return obj.exp && obj.exp > Date.now() ? obj : null;
   } catch {
     return null;
   }
 }
-const cookie = (req, name) => (req.headers.get("cookie") || "").split(/;\s*/).find((c) => c.startsWith(name + "="))?.slice(name.length + 1);
-const setCookie = (name, value, maxAge) => `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
-const xReady = (env) => Boolean(env.X_CLIENT_ID && env.X_CLIENT_SECRET && env.SESSION_SECRET);
+const cookie = (req, name) =>
+  (req.headers.get("cookie") || "")
+    .split(/;\s*/)
+    .find((c) => c.startsWith(name + "="))
+    ?.slice(name.length + 1);
+const setCookie = (name, value, maxAge) =>
+  `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+const xReady = (env) =>
+  Boolean(env.X_CLIENT_ID && env.X_CLIENT_SECRET && env.SESSION_SECRET);
 const session = (req, env) => unseal(env, cookie(req, "eg_x"));
 
 async function auth(request, env, url) {
   const callback = `${url.origin}/api/auth/x/callback`;
   if (url.pathname === "/api/auth/me") {
     const s = xReady(env) ? await session(request, env) : null;
-    return json({ xEnabled: xReady(env), user: s ? { username: s.username, name: s.name, avatar: s.avatar } : null });
+    return json({
+      xEnabled: xReady(env),
+      user: s ? { username: s.username, name: s.name, avatar: s.avatar } : null,
+    });
   }
   if (url.pathname === "/api/auth/logout" && request.method === "POST") {
-    return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json", "set-cookie": setCookie("eg_x", "", 0) } });
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: {
+        "content-type": "application/json",
+        "set-cookie": setCookie("eg_x", "", 0),
+      },
+    });
   }
-  if (!xReady(env)) return json({ error: "Sign in with X isn't set up yet." }, 503);
+  if (!xReady(env))
+    return json({ error: "Sign in with X isn't set up yet." }, 503);
 
   if (url.pathname === "/api/auth/x/login") {
     const state = rand(16);
     const verifier = rand(48);
-    const challenge = b64url(await crypto.subtle.digest("SHA-256", enc.encode(verifier)));
+    const challenge = b64url(
+      await crypto.subtle.digest("SHA-256", enc.encode(verifier)),
+    );
     const q = new URLSearchParams({
       response_type: "code",
       client_id: env.X_CLIENT_ID,
@@ -270,38 +360,78 @@ async function auth(request, env, url) {
       code_challenge: challenge,
       code_challenge_method: "S256",
     });
-    const pending = await seal(env, { state, verifier, exp: Date.now() + 10 * 60 * 1000 });
-    return new Response(null, { status: 302, headers: { location: `https://x.com/i/oauth2/authorize?${q}`, "set-cookie": setCookie("eg_xo", pending, 600) } });
+    const pending = await seal(env, {
+      state,
+      verifier,
+      exp: Date.now() + 10 * 60 * 1000,
+    });
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: `https://x.com/i/oauth2/authorize?${q}`,
+        "set-cookie": setCookie("eg_xo", pending, 600),
+      },
+    });
   }
 
   if (url.pathname === "/api/auth/x/callback") {
     const back = (msg) => {
-      const h = new Headers({ location: `/?open=notes${msg ? `&auth=${encodeURIComponent(msg)}` : ""}` });
+      const h = new Headers({
+        location: `/?open=notes${msg ? `&auth=${encodeURIComponent(msg)}` : ""}`,
+      });
       h.append("set-cookie", setCookie("eg_xo", "", 0));
       return h;
     };
     const pending = await unseal(env, cookie(request, "eg_xo"));
     const code = url.searchParams.get("code");
-    if (url.searchParams.get("error")) return new Response(null, { status: 302, headers: back("cancelled") });
-    if (!pending || !code || url.searchParams.get("state") !== pending.state) return new Response(null, { status: 302, headers: back("expired") });
+    if (url.searchParams.get("error"))
+      return new Response(null, { status: 302, headers: back("cancelled") });
+    if (!pending || !code || url.searchParams.get("state") !== pending.state)
+      return new Response(null, { status: 302, headers: back("expired") });
 
     const tok = await fetch("https://api.x.com/2/oauth2/token", {
       method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded", authorization: `Basic ${btoa(`${env.X_CLIENT_ID}:${env.X_CLIENT_SECRET}`)}` },
-      body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: callback, code_verifier: pending.verifier, client_id: env.X_CLIENT_ID }),
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        authorization: `Basic ${btoa(`${env.X_CLIENT_ID}:${env.X_CLIENT_SECRET}`)}`,
+      },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: callback,
+        code_verifier: pending.verifier,
+        client_id: env.X_CLIENT_ID,
+      }),
     });
-    if (!tok.ok) return new Response(null, { status: 302, headers: back("failed") });
+    if (!tok.ok)
+      return new Response(null, { status: 302, headers: back("failed") });
     const { access_token } = await tok.json();
-    const me = await fetch("https://api.x.com/2/users/me?user.fields=profile_image_url", { headers: { authorization: `Bearer ${access_token}` } });
-    if (!me.ok) return new Response(null, { status: 302, headers: back("failed") });
+    const me = await fetch(
+      "https://api.x.com/2/users/me?user.fields=profile_image_url",
+      { headers: { authorization: `Bearer ${access_token}` } },
+    );
+    if (!me.ok)
+      return new Response(null, { status: 302, headers: back("failed") });
     const u = (await me.json()).data;
     // Best effort: revoke the access token, we only needed it to learn who signed in.
     fetch("https://api.x.com/2/oauth2/revoke", {
       method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded", authorization: `Basic ${btoa(`${env.X_CLIENT_ID}:${env.X_CLIENT_SECRET}`)}` },
-      body: new URLSearchParams({ token: access_token, token_type_hint: "access_token" }),
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        authorization: `Basic ${btoa(`${env.X_CLIENT_ID}:${env.X_CLIENT_SECRET}`)}`,
+      },
+      body: new URLSearchParams({
+        token: access_token,
+        token_type_hint: "access_token",
+      }),
     }).catch(() => {});
-    const sess = await seal(env, { id: u.id, username: u.username, name: u.name, avatar: u.profile_image_url || null, exp: Date.now() + 30 * 24 * 3600 * 1000 });
+    const sess = await seal(env, {
+      id: u.id,
+      username: u.username,
+      name: u.name,
+      avatar: u.profile_image_url || null,
+      exp: Date.now() + 30 * 24 * 3600 * 1000,
+    });
     const h = back("");
     h.append("set-cookie", setCookie("eg_x", sess, 30 * 24 * 3600));
     return new Response(null, { status: 302, headers: h });
@@ -327,7 +457,10 @@ export default {
       try {
         return await notes(request, env);
       } catch (e) {
-        return json({ error: "Notes are unavailable right now. Try again shortly." }, 500);
+        return json(
+          { error: "Notes are unavailable right now. Try again shortly." },
+          500,
+        );
       }
     }
     if (url.pathname === "/api/x") {
@@ -336,7 +469,10 @@ export default {
       } catch (e) {
         return new Response(JSON.stringify({ error: String(e.message || e) }), {
           status: 502,
-          headers: { "content-type": "application/json", "cache-control": "no-store" },
+          headers: {
+            "content-type": "application/json",
+            "cache-control": "no-store",
+          },
         });
       }
     }
