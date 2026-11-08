@@ -25,7 +25,7 @@ export default function Privacy() {
         <h1 className="font-display text-5xl font-bold tracking-tight mt-6">
           Privacy
         </h1>
-        <p className="text-mist mt-2 text-sm">Last updated 7 November 2026</p>
+        <p className="text-mist mt-2 text-sm">Last updated 8 November 2026</p>
 
         <p className="mt-6">
           This is my personal site. It has no ads, sells nothing about you, and
@@ -81,6 +81,11 @@ export default function Privacy() {
           <li>
             The site runs on Cloudflare, which handles every request and keeps
             standard logs under its own privacy policy.
+          </li>
+          <li>
+            Visits are counted with Cloudflare Web Analytics, which uses no
+            cookies and doesn't track you across sites. It sees which page you
+            opened, your browser type and rough country, and page load speed.
           </li>
           <li>
             Songs and cover art load from an IPFS gateway (Pinata), and older

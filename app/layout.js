@@ -69,6 +69,12 @@ export default function L({ children }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(PERSON) }}
         />
         {children}
+        {/* Cloudflare Web Analytics: cookieless page-view counts. The token is public by design. */}
+        <script
+          defer
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon='{"token": "ce3de90b8be745afbb0e5fc105d9b35a"}'
+        />
       </body>
     </html>
   );
